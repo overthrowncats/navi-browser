@@ -2,7 +2,7 @@
 A lightweight, minimal web browser built with Python and PyQt5.
 
 ## 📥 Download
-**👉 [Download the latest version here](https://github.com/YOUR-USERNAME/YOUR-REPO-NAME/releases/latest)**  
+**👉 [Download the latest version here](https://github.com/omxrprob/omxrbrowser/releases/latest)**  
 After downloading, just run the `OmxrBrowser.exe` file.
 
 > ⚠️ Windows might show a warning — click **More info → Run anyway**.
@@ -10,6 +10,6 @@ After downloading, just run the `OmxrBrowser.exe` file.
 ## 🛠️ How to Build
 ```bash
 git clone https://github.com/Omxrprob/omxrbrowser.git
-cd YOUR-REPO-NAME
+cd omxrbrowser
 pip install -r requirements.txt
 python simple_browser.py
