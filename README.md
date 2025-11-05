@@ -1,15 +1,15 @@
-# Omxr Browser 🌐
+# navi Browser 🌐
 A lightweight, minimal web browser built with Python and PyQt5.
 
 ## 📥 Download
-**👉 [Download the latest version here](https://github.com/omxrprob/omxrbrowser/releases/latest)**  
+**👉 [Download the latest version here](https://github.com/omxrprob/navi-browser/releases/latest)**  
 After downloading, just run the `OmxrBrowser.exe` file.
 
 > ⚠️ Windows might show a warning — click **More info → Run anyway**.
 
 ## 🛠️ How to Build
 ```bash
-git clone https://github.com/Omxrprob/omxrbrowser.git
+git clone https://github.com/Omxrprob/navi-browser.git
 cd omxrbrowser
 pip install -r requirements.txt
 python simple_browser.py
