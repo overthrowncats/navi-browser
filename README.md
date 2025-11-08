@@ -10,6 +10,6 @@ After downloading, just run the `OmxrBrowser.exe` file.
 ## 🛠️ How to Build
 ```bash
 git clone https://github.com/Omxrprob/navi-browser.git
-cd omxrbrowser
+cd navi browser
 pip install -r requirements.txt
 python simple_browser.py
