@@ -1,10 +1,9 @@
 import sys
-import json
-from PyQt5.QtCore import QUrl, QRegExp
+from PyQt5.QtCore import QUrl
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QLineEdit,
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit,
-    QMessageBox # Used instead of confirm/alert
+    QMessageBox # Used for proper message and confirmation boxes
 )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
@@ -26,7 +25,8 @@ class WebsiteBuilderWindow(QWidget):
         domain_layout = QHBoxLayout()
         self.domain_input = QLineEdit()
         self.domain_input.setPlaceholderText("your-site-name")
-        # Disable editing domain if we are editing an existing site
+        
+        # Lock domain input when editing existing sites
         if self.domain_to_edit:
             self.domain_input.setReadOnly(True)
             domain_layout.addWidget(QLabel("Domain (Locked):"))
@@ -64,13 +64,13 @@ class WebsiteBuilderWindow(QWidget):
         if self.domain_to_edit:
             site_data = self.browser_main.personal_websites.get(self.domain_to_edit.lower())
             if site_data:
-                # Strip the suffix for display in the input box if not read-only
+                # Strip the suffix for display in the input box
                 self.domain_input.setText(self.domain_to_edit.replace(".pw-navi", ""))
                 self.title_input.setText(site_data.get('title', ''))
                 self.content_input.setText(site_data.get('html_content', ''))
 
     def show_error(self, message):
-        """Custom message box for errors (replaces alert())."""
+        """Custom message box for errors."""
         error_box = QMessageBox()
         error_box.setWindowTitle("Error")
         error_box.setText(message)
@@ -88,15 +88,17 @@ class WebsiteBuilderWindow(QWidget):
         full_domain = f"{domain_prefix}.pw-navi"
         html_content = self.content_input.toPlainText().strip()
         
-        if not html_content.startswith('<!DOCTYPE html>'):
-            # Simple check to enforce full HTML structure
-            self.show_error("Please provide a full HTML document starting with <!DOCTYPE html>.")
-            return
-
         # Check for duplication only if creating a NEW site
         if not self.domain_to_edit and full_domain in self.browser_main.personal_websites:
             self.show_error(f"Domain '{full_domain}' already exists. Please choose a different name or edit the existing site.")
             return
+        
+        # Basic check to encourage full HTML structure
+        if not html_content.startswith('<!DOCTYPE html>'):
+             if QMessageBox.question(self, "Warning",
+                                     "It looks like you didn't start with <!DOCTYPE html>. Your site might not render CSS/JS correctly. Continue?",
+                                     QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
+                 return
 
         self.browser_main.personal_websites[full_domain] = {
             'domain': full_domain,
@@ -113,7 +115,6 @@ class WebsiteBuilderWindow(QWidget):
 
 # --- Main Browser Application ---
 class SimpleBrowser(QMainWindow):
-    # Data structure to hold multiple user-created websites (in-memory)
     personal_websites = {
         'welcome.pw-navi': {
             'title': 'Welcome to your Navi Site!',
@@ -167,12 +168,13 @@ class SimpleBrowser(QMainWindow):
         stop_btn = QAction("🛑 Stop", self); stop_btn.triggered.connect(self.browser.stop); navbar.addAction(stop_btn)
         home_btn = QAction("🏠 Home", self); home_btn.triggered.connect(self.navigate_home); navbar.addAction(home_btn)
         
-        # New Feature Button: Site Builder/Manager
+        # Builder/Manager Button
         builder_btn = QAction("🌐 Builder", self)
-        builder_btn.triggered.connect(self.show_website_builder)
+        # Clicking the Builder button now navigates to the manager page
+        builder_btn.triggered.connect(lambda: self.navigate_to_url_bar_text("Navi://pw"))
         navbar.addAction(builder_btn)
 
-        # New Feature Button: Web Store
+        # Web Store Button
         cws_btn = QAction("🛒 Store", self)
         cws_btn.triggered.connect(lambda: self.navigate_to_url_bar_text("Navi://cws"))
         navbar.addAction(cws_btn)
@@ -189,12 +191,12 @@ class SimpleBrowser(QMainWindow):
         self.builder_window = None # Keep a reference to the builder window
 
     def navigate_to_url_bar_text(self, text):
-        """Helper to set text and navigate."""
+        """Helper to set text and navigate programmatically."""
         self.url_bar.setText(text)
-        self.navigate_to_url()
+        self.navigate_to_url(is_internal_click=True) # Treat this as an internal action
 
     def show_message(self, title, message, icon=QMessageBox.Information):
-        """Custom message box for feedback (replaces alert())."""
+        """Custom message box for feedback."""
         msg_box = QMessageBox()
         msg_box.setWindowTitle(title)
         msg_box.setText(message)
@@ -203,17 +205,14 @@ class SimpleBrowser(QMainWindow):
 
     def show_website_builder(self, domain_to_edit=None):
         """Opens the personal website builder window."""
-        # Clean up existing window reference if it was closed
-        if self.builder_window and not self.builder_window.isVisible():
+        # Clean up and show new window
+        if self.builder_window:
+            self.builder_window.close()
             self.builder_window = None
             
-        if self.builder_window is None:
-            self.builder_window = WebsiteBuilderWindow(self, domain_to_edit)
-            self.builder_window.show()
-        else:
-            # If the builder is already open, focus it
-            self.builder_window.show()
-            self.builder_window.activateWindow()
+        self.builder_window = WebsiteBuilderWindow(self, domain_to_edit)
+        self.builder_window.show()
+        self.builder_window.activateWindow()
 
     # --- Internal Page Handlers ---
 
@@ -221,7 +220,7 @@ class SimpleBrowser(QMainWindow):
         """Generates and loads the Navi://pw management page."""
         sites_list = ""
         for domain, data in self.personal_websites.items():
-            # Internal links for Delete and Edit actions
+            # Use Navi:// protocol links for delete and edit actions
             delete_link = f'Navi://pw/delete/{domain}'
             edit_link = f'Navi://pw/edit/{domain}'
             
@@ -233,7 +232,7 @@ class SimpleBrowser(QMainWindow):
                     </div>
                     <div>
                         <a href="{edit_link}" style="background-color: #FFA500; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none; margin-right: 8px;">Edit</a>
-                        <a href="{delete_link}" style="background-color: #DC143C; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none;" onclick="return confirm('Are you sure you want to delete {domain}?');">Delete</a>
+                        <a href="{delete_link}" style="background-color: #DC143C; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none;">Delete</a>
                     </div>
                 </li>
             """
@@ -255,7 +254,7 @@ class SimpleBrowser(QMainWindow):
         <body>
             <div class="container">
                 <h1>🌐 Personal Website Manager (`Navi://pw`)</h1>
-                <p>Manage all your local, custom-built `.pw-Navi` sites here. Click a domain to view it.</p>
+                <p>Manage all your local, custom-built `.pw-Navi` sites here. Click a domain to view it, or click **Edit/Delete** to manage.</p>
                 <a href="Navi://pw/new" class="add-btn">➕ Create New Site</a>
                 <h2>Your Sites ({len(self.personal_websites)})</h2>
                 <ul>{sites_list}</ul>
@@ -263,70 +262,35 @@ class SimpleBrowser(QMainWindow):
         </body>
         </html>
         """
-        self.browser.setHtml(manager_html, QUrl("local://navi/pw/"))
+        # We use QUrl("about:blank") as a base URL to ensure internal links are not misresolved
+        self.browser.setHtml(manager_html, QUrl("about:blank")) 
         self.setWindowTitle("Personal Website Manager")
 
-    def load_chrome_web_store_page(self):
-        """Generates and loads the Navi://cws placeholder page."""
-        extensions = [
-            ("AdBlocker Pro", "Blocks annoying ads everywhere.", "#FF5733"),
-            ("Navi Dark Mode", "Switches all pages to a sleek dark theme.", "#000080"),
-            ("Custom Scraper", "A powerful tool for data extraction from pages.", "#DAA520"),
-        ]
-        
-        items_list = ""
-        for name, desc, color in extensions:
-            items_list += f"""
-                <div style="background-color: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid {color};">
-                    <h3 style="color: {color}; margin-top: 0;">{name}</h3>
-                    <p style="color: #555;">{desc}</p>
-                    <button style="background-color: #2ECC71; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;" onclick="alert('Extension installed! (Just kidding, this is a placeholder)');">Install</button>
-                </div>
-            """
-
-        cws_html = f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Navi Web Store - Navi://cws</title>
-            <style>
-                body {{ font-family: 'Inter', sans-serif; background-color: #f0f4f8; color: #333; padding: 20px; }}
-                .container {{ max-width: 700px; margin: 0 auto; }}
-                h1 {{ color: #4285F4; border-bottom: 2px solid #4285F4; padding-bottom: 10px; display: flex; align-items: center; }}
-                .icon {{ font-size: 2em; margin-right: 15px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1><span class="icon">🛒</span>Navi Web Store (`Navi://cws`)</h1>
-                <p>Welcome to the placeholder Web Store! True extension support is complex, but here's how a dedicated internal page works.</p>
-                {items_list}
-            </div>
-        </body>
-        </html>
-        """
-        self.browser.setHtml(cws_html, QUrl("local://navi/cws/"))
-        self.setWindowTitle("Navi Web Store")
-
     def delete_personal_website(self, domain):
-        """Handles the deletion of a personal website."""
+        """Handles the deletion of a personal website with confirmation."""
         domain = domain.lower()
-        if domain in self.personal_websites:
+        
+        if domain not in self.personal_websites:
+            self.show_message("Error", f"Could not find website '{domain}' to delete.", QMessageBox.Warning)
+            return
+
+        # Use QMessageBox for confirmation (instead of alert/confirm)
+        reply = QMessageBox.question(self, 'Confirm Deletion', 
+                                     f"Are you sure you want to permanently delete '{domain}'?",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
             del self.personal_websites[domain]
             self.show_message("Site Deleted", f"The website '{domain}' has been successfully deleted.", QMessageBox.Information)
-        else:
-            self.show_message("Error", f"Could not find website '{domain}' to delete.", QMessageBox.Warning)
         
         # Navigate back to the management page to refresh the list
         self.load_personal_websites_manager()
-
 
     def navigate_home(self):
         """Navigates to the default home page."""
         self.browser.setUrl(QUrl("https://www.google.com"))
 
-    def navigate_to_url(self):
+    def navigate_to_url(self, is_internal_click=False):
         """
         Navigates to the entered URL, performs a search, or loads the custom site/internal page.
         """
@@ -335,23 +299,31 @@ class SimpleBrowser(QMainWindow):
         # --- Internal Protocol Handling ---
         if url.lower().startswith("navi://"):
             command = url[7:].lower()
+            
             if command == "pw" or command == "pw/":
                 self.load_personal_websites_manager()
                 return
+            
             if command == "pw/new":
                 self.show_website_builder(domain_to_edit=None) # Create new site
                 return
+            
+            # Handle Edit requests: Navi://pw/edit/domain.pw-navi
             if command.startswith("pw/edit/"):
                 domain_to_edit = command[8:]
                 self.show_website_builder(domain_to_edit) # Edit existing site
                 return
+            
             # Handle deletion requests: Navi://pw/delete/domain.pw-navi
             if command.startswith("pw/delete/"):
                 domain_to_delete = command[10:]
                 self.delete_personal_website(domain_to_delete)
                 return
+
+            # Handle Chrome Web Store request
             if command == "cws" or command == "cws/":
-                self.load_chrome_web_store_page()
+                # Navigate to the actual web store link as requested
+                self.browser.setUrl(QUrl("https://chrome.google.com/webstore"))
                 return
 
         # --- Custom Domain Check ---
@@ -359,7 +331,6 @@ class SimpleBrowser(QMainWindow):
             site_data = self.personal_websites.get(url.lower())
             if site_data:
                 # Load custom HTML directly into the browser
-                # The baseUrl ensures relative links/assets might work if the user embeds them
                 self.browser.setHtml(site_data['html_content'], QUrl(f"local://{url}/")) 
                 self.setWindowTitle(site_data.get('title', 'Navi Site'))
                 return
@@ -375,16 +346,31 @@ class SimpleBrowser(QMainWindow):
             self.browser.setUrl(QUrl(search_url))
 
     def update_url(self, q):
-        """Updates the text in the address bar when the browser navigates."""
+        """
+        Updates the text in the address bar when the browser navigates. 
+        Crucially, it intercepts Navi:// links (from clicks) and triggers navigation.
+        """
         url_str = q.toString()
-        # Only update the URL bar if it's not our internal local URL representation
-        # and doesn't contain a query path which might confuse the user
+
+        # Check if the browser is navigating to a custom internal protocol URL
+        is_navi_command = url_str.lower().startswith("navi://")
+
+        if is_navi_command:
+            # If it's a Navi:// command (likely from an internal link click),
+            # update the URL bar and immediately execute the command logic.
+            self.url_bar.setText(url_str)
+            self.url_bar.setCursorPosition(0)
+            self.navigate_to_url(is_internal_click=True)
+            # The browser tried to navigate to navi://, we handled it, so we stop further processing
+            return
+
+        # Update URL bar for external web pages and the internal "local://" pages
         if not url_str.startswith("local://"):
             self.url_bar.setText(url_str)
             self.url_bar.setCursorPosition(0)
 
+
 if __name__ == '__main__':
-    # Standard boilerplate for PyQt application
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
