@@ -1,12 +1,22 @@
 import sys
-from PyQt5.QtCore import QUrl, Qt, QSize
+from PyQt5.QtCore import QUrl, Qt
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QLineEdit,
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit,
-    QMessageBox, QTabWidget, QComboBox, QCheckBox, QMenu, QSplitter
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit,
+    QMessageBox, QTabWidget, QMenu
 )
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
-from PyQt5.QtGui import QIcon, QKeySequence
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+
+# --- Custom Page Handler (The Fix) ---
+class NaviWebPage(QWebEnginePage):
+    def acceptNavigationRequest(self, url, _type, isMainFrame):
+        # CRITICAL FIX: Intercept 'navi://' scheme before it goes to the OS
+        if url.scheme() == "navi":
+            view = self.view()
+            if view and hasattr(view, 'parent_window'):
+                view.parent_window.handle_internal_pages(url.toString(), view)
+            return False # Stop the browser from asking Windows to open the link
+        return super().acceptNavigationRequest(url, _type, isMainFrame)
 
 # --- Internal Page Generator ---
 class InternalPages:
@@ -23,7 +33,7 @@ class InternalPages:
                 .search-box { padding: 12px; width: 400px; border: 2px solid #ddd; border-radius: 25px; font-size: 16px; outline: none; }
                 .search-box:focus { border-color: #007bff; }
                 .links { margin-top: 20px; }
-                a { color: #666; text-decoration: none; margin: 0 10px; font-weight: 500; }
+                a { color: #666; text-decoration: none; margin: 0 10px; font-weight: 500; cursor: pointer; }
                 a:hover { color: #007bff; }
             </style>
         </head>
@@ -31,10 +41,10 @@ class InternalPages:
             <h1>Navi Browser</h1>
             <p>The browser built for you.</p>
             <div class="links">
-                <a href="Navi://pw">My Sites</a> •
-                <a href="Navi://cws">Extensions</a> •
-                <a href="Navi://proxy">Proxy</a> •
-                <a href="Navi://info">Info</a>
+                <a href="navi://pw">My Sites</a> •
+                <a href="navi://cws">Extensions</a> •
+                <a href="navi://proxy">Proxy</a> •
+                <a href="navi://info">Info</a>
             </div>
         </body>
         </html>
@@ -63,13 +73,6 @@ class InternalPages:
                 <p>Join our Community!</p>
                 <a href="https://discord.gg/64um79VVMa">Click to Join Discord Server</a>
             </div>
-
-            <h2>Documentation (Navi://)</h2>
-            <ul>
-                <li><b>Navi://pw</b> - Personal Website Builder. Create HTML/CSS/JS sites locally.</li>
-                <li><b>Navi://cws</b> - Custom Web Store. Inject your own JavaScript into pages.</li>
-                <li><b>Navi://proxy</b> - Configure API keys for web proxying.</li>
-            </ul>
         </body>
         </html>
         """
@@ -88,7 +91,6 @@ class WebsiteBuilderWindow(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout()
         
-        # Inputs
         self.domain_input = QLineEdit()
         self.domain_input.setPlaceholderText("site-name")
         if self.domain_to_edit: 
@@ -138,18 +140,20 @@ class BrowserTab(QWebEngineView):
     def __init__(self, parent_window):
         super().__init__()
         self.parent_window = parent_window
+        
+        # Use the Custom Page Handler
+        self.setPage(NaviWebPage(self))
+        
         self.page().loadFinished.connect(self.inject_user_scripts)
 
     def inject_user_scripts(self, ok):
         if not ok: return
-        # Inject all active extensions (JS)
         for name, script_data in self.parent_window.extensions.items():
             if script_data['active']:
                 print(f"Injecting extension: {name}")
                 self.page().runJavaScript(script_data['code'])
 
     def createWindow(self, _type):
-        # Handle target="_blank" by creating a new tab
         return self.parent_window.add_new_tab()
 
 # --- Main Browser Window ---
@@ -160,60 +164,49 @@ class NaviBrowser(QMainWindow):
         self.resize(1200, 800)
         self.setStyleSheet("QMainWindow { background-color: #ffffff; } QTabWidget::pane { border: 0; }")
 
-        # Data Storage
         self.personal_websites = {}
-        self.extensions = {} # Format: {'name': {'code': '...', 'active': True}}
+        self.extensions = {}
         self.proxy_settings = {'type': 'None', 'key': '', 'url': ''}
         self.dark_mode = False
 
-        # Default Site
         self.personal_websites['welcome.pw-navi'] = {
             'title': 'Welcome',
-            'html_content': InternalPages.get_home_html() # Pre-load home structure
+            'html_content': InternalPages.get_home_html()
         }
 
         self.setup_ui()
-        # Load Home
         self.add_new_tab(QUrl("local://navi/"))
 
     def setup_ui(self):
-        # Toolbar
         self.toolbar = QToolBar()
         self.toolbar.setMovable(False)
         self.toolbar.setStyleSheet("QToolBar { background: #f0f0f0; border-bottom: 1px solid #ccc; padding: 5px; }")
         self.addToolBar(self.toolbar)
 
-        # Actions
         self.toolbar.addAction("←", self.go_back)
         self.toolbar.addAction("→", self.go_forward)
         self.toolbar.addAction("⟳", self.reload_page)
         self.toolbar.addAction("🏠", self.go_home)
 
-        # URL Bar
         self.url_bar = QLineEdit()
         self.url_bar.setPlaceholderText("Search or enter address...")
         self.url_bar.setStyleSheet("padding: 6px; border-radius: 4px; border: 1px solid #ccc;")
         self.url_bar.returnPressed.connect(self.navigate_from_bar)
         self.toolbar.addWidget(self.url_bar)
 
-        # Add Tab Button
         add_tab_btn = QAction("+", self)
         add_tab_btn.triggered.connect(lambda: self.add_new_tab())
         self.toolbar.addAction(add_tab_btn)
 
-        # Settings Menu
         settings_btn = QPushButton("☰")
         settings_btn.setFlat(True)
         settings_menu = QMenu()
-        
         toggle_dark = QAction("Toggle Dark Mode", self)
         toggle_dark.triggered.connect(self.toggle_theme)
         settings_menu.addAction(toggle_dark)
-        
         settings_btn.setMenu(settings_menu)
         self.toolbar.addWidget(settings_btn)
 
-        # Tabs System
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
         self.tabs.setTabsClosable(True)
@@ -221,25 +214,18 @@ class NaviBrowser(QMainWindow):
         self.tabs.currentChanged.connect(self.update_url_bar)
         self.setCentralWidget(self.tabs)
 
-    # --- Tab Management ---
     def add_new_tab(self, qurl=None, label="New Tab"):
-        if qurl is None:
-            qurl = QUrl("local://navi/")
-
+        if qurl is None: qurl = QUrl("local://navi/")
         browser = BrowserTab(self)
         browser.setUrl(qurl)
-        
-        # Connect signals
         browser.urlChanged.connect(lambda q, b=browser: self.update_url_bar_from_tab(q, b))
         browser.titleChanged.connect(lambda t, b=browser: self.update_tab_title(t, b))
-        
         i = self.tabs.addTab(browser, label)
         self.tabs.setCurrentIndex(i)
         return browser
 
     def close_tab(self, i):
-        if self.tabs.count() < 2:
-            return # Don't close last tab
+        if self.tabs.count() < 2: return
         self.tabs.removeTab(i)
 
     def update_tab_title(self, title, browser):
@@ -247,52 +233,41 @@ class NaviBrowser(QMainWindow):
         if index != -1:
             self.tabs.setTabText(index, title[:15] + "..." if len(title) > 15 else title)
 
-    # --- Navigation Logic ---
     def go_back(self): self.tabs.currentWidget().back()
     def go_forward(self): self.tabs.currentWidget().forward()
     def reload_page(self): self.tabs.currentWidget().reload()
     def go_home(self): self.tabs.currentWidget().setUrl(QUrl("local://navi/"))
 
     def navigate_from_bar(self):
-        text = self.url_bar.text().strip()
-        self.process_url(text)
+        self.process_url(self.url_bar.text().strip())
 
     def process_url(self, text):
         browser = self.tabs.currentWidget()
-        
-        # Internal Navi Protocols
         if text.lower().startswith("navi://"):
             self.handle_internal_pages(text, browser)
             return
-
-        # Personal Sites
         if text.lower().endswith(".pw-navi"):
             data = self.personal_websites.get(text.lower())
             if data:
                 browser.setHtml(data['html_content'], QUrl(f"local://{text}/"))
                 return
-
-        # Standard Web
         url = QUrl(text)
         if "." not in text and " " in text:
             url = QUrl(f"https://www.google.com/search?q={text.replace(' ', '+')}")
         elif "://" not in text:
             url = QUrl("https://" + text)
-        
         browser.setUrl(url)
 
     def update_url_bar(self, index):
         if index >= 0:
-            url = self.tabs.widget(index).url().toString()
-            self.update_bar_text(url)
+            self.update_bar_text(self.tabs.widget(index).url().toString())
 
     def update_url_bar_from_tab(self, q, browser):
         if browser == self.tabs.currentWidget():
             self.update_bar_text(q.toString())
-            
-            # Intercept clicks on Navi:// links inside pages
-            if q.toString().lower().startswith("navi://"):
-                self.handle_internal_pages(q.toString(), browser)
+            # Also check URL for direct navi scheme entry from JS
+            if q.scheme() == "navi":
+                 self.handle_internal_pages(q.toString(), browser)
 
     def update_bar_text(self, url_str):
         if url_str.startswith("local://navi/"):
@@ -301,7 +276,6 @@ class NaviBrowser(QMainWindow):
         elif not url_str.startswith("local://"):
             self.url_bar.setText(url_str)
 
-    # --- Internal Page Handlers ---
     def handle_internal_pages(self, url, browser):
         cmd = url.lower().replace("navi://", "").strip("/")
         
@@ -315,7 +289,6 @@ class NaviBrowser(QMainWindow):
             self.load_extension_manager(browser)
         elif cmd == "proxy":
             self.load_proxy_manager(browser)
-        # Commands
         elif cmd == "pw/new":
             self.builder_window = WebsiteBuilderWindow(self)
             self.builder_window.show()
@@ -327,8 +300,6 @@ class NaviBrowser(QMainWindow):
             domain = url.split("/")[-1]
             self.delete_site(domain)
 
-    # --- Special Page Generators ---
-    
     def load_site_manager(self, browser):
         rows = ""
         for d, data in self.personal_websites.items():
@@ -340,12 +311,10 @@ class NaviBrowser(QMainWindow):
                     <a href='navi://pw/delete/{d}' style='color:red;'>Delete</a>
                 </div>
             </div>"""
-            
         html = f"""<h1>Personal Websites</h1><a href='navi://pw/new'><button style='padding:10px; background:#2ECC71; color:white; border:none;'>+ New Site</button></a><br><br>{rows}"""
         browser.setHtml(self.wrap_internal(html), QUrl("local://navi/pw"))
 
     def load_extension_manager(self, browser):
-        # Create a form to add JS
         js_list = ""
         for name, data in self.extensions.items():
             status = "Active" if data['active'] else "Inactive"
@@ -358,7 +327,6 @@ class NaviBrowser(QMainWindow):
                 <button onclick="window.location='navi://cws/delete/{name}'">Delete</button>
             </div>
             """
-            
         html = f"""
         <h1>Navi Extensions (CWS)</h1>
         <p>Inject custom JavaScript into every page.</p>
@@ -372,12 +340,10 @@ class NaviBrowser(QMainWindow):
         function saveExt() {{
             var name = document.getElementById('ex_name').value;
             var code = document.getElementById('ex_code').value;
-            // Quick hack to send data via URL for python to catch
             window.location = 'navi://cws/save/' + encodeURIComponent(name) + '/' + encodeURIComponent(code);
         }}
         </script>
-        <hr>
-        {js_list}
+        <hr>{js_list}
         """
         browser.setHtml(self.wrap_internal(html), QUrl("local://navi/cws"))
 
@@ -406,11 +372,8 @@ class NaviBrowser(QMainWindow):
         """
         browser.setHtml(self.wrap_internal(html), QUrl("local://navi/proxy"))
 
-    # --- Logic for CWS/Proxy Data Handling ---
     def update_url_bar_from_tab(self, q, browser):
         url = q.toString()
-        
-        # Intercept Extension Saving
         if "navi://cws/save/" in url:
             parts = url.split("/save/")
             if len(parts) > 1:
@@ -420,35 +383,26 @@ class NaviBrowser(QMainWindow):
                 self.extensions[name] = {'code': code, 'active': True}
                 self.load_extension_manager(browser)
                 return
-
         if "navi://cws/toggle/" in url:
             name = url.split("/toggle/")[-1]
             if name in self.extensions:
                 self.extensions[name]['active'] = not self.extensions[name]['active']
             self.load_extension_manager(browser)
             return
-            
         if "navi://cws/delete/" in url:
             name = url.split("/delete/")[-1]
             if name in self.extensions: del self.extensions[name]
             self.load_extension_manager(browser)
             return
-
-        # Intercept Proxy Running
         if "navi://proxy/run/" in url:
             parts = url.split("/run/")
             args = parts[1].split("/")
             self.proxy_settings['type'] = args[0]
             self.proxy_settings['key'] = QUrl.fromPercentEncoding(args[1].encode())
             target_url = QUrl.fromPercentEncoding(args[2].encode())
-            
-            # Simulate Proxy by loading url with modified headers (conceptual)
-            # In a real app, we'd use QWebEngineUrlRequestInterceptor
             QMessageBox.information(self, "Proxy Active", f"Using {args[0]} API.\nKey: {self.proxy_settings['key'][:5]}***\nLoading: {target_url}")
             browser.setUrl(QUrl(target_url))
             return
-
-        # Normal updates
         if browser == self.tabs.currentWidget():
             self.update_bar_text(url)
             if url.lower().startswith("navi://"):
