@@ -7,6 +7,8 @@ After downloading, just run the `OmxrBrowser.exe` file.
 
 > ⚠️ Windows might show a warning — click **More info → Run anyway**.
 
+[join our discird server for more information](https://discord.gg/2ps9Fq6fpH)
+
 ## 🛠️ How to Build
 ```bash
 git clone https://github.com/omxrprob/navi-browser.git
