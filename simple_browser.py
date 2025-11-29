@@ -495,10 +495,14 @@ class NaviBrowser(QMainWindow):
     def update_tab_title(self, t, b): 
         i = self.tabs.indexOf(b); 
         if i!=-1: self.tabs.setTabText(i, t[:15])
-    def go_back(self): self.tabs.currentWidget().back()
-    def go_forward(self): self.tabs.currentWidget().forward()
-    def reload_page(self): self.tabs.currentWidget().reload()
-    def go_home(self): self.tabs.currentWidget().setUrl(QUrl("local://navi/"))
+    def go_back(self): 
+        if self.tabs.currentWidget(): self.tabs.currentWidget().back()
+    def go_forward(self): 
+        if self.tabs.currentWidget(): self.tabs.currentWidget().forward()
+    def reload_page(self): 
+        if self.tabs.currentWidget(): self.tabs.currentWidget().reload()
+    def go_home(self): 
+        if self.tabs.currentWidget(): self.tabs.currentWidget().setUrl(QUrl("local://navi/"))
     def update_url_bar(self, i): 
         if i>=0: self.update_bar_text(self.tabs.widget(i).url().toString())
     def update_url_bar_for_tab(self, q, b):
@@ -511,6 +515,8 @@ class NaviBrowser(QMainWindow):
     def navigate(self):
         text = self.url_bar.text().strip()
         browser = self.tabs.currentWidget()
+        if not browser: return
+        
         if text.lower().startswith("navi://"): self.handle_internal_pages(text, browser)
         elif text.lower().endswith(".pw-navi"):
             d = self.data['sites'].get(text.lower())
@@ -538,7 +544,9 @@ class NaviBrowser(QMainWindow):
 
     def apply_theme(self):
         self.setStyleSheet(ModernStyles.get(self.data['settings']['dark_mode']))
-        self.reload_page()
+        # Safe reload that checks if a tab exists first
+        if self.tabs.currentWidget():
+            self.tabs.currentWidget().reload()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
