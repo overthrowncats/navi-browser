@@ -440,7 +440,8 @@ class NaviBrowser(QMainWindow):
             rows += f"""<div class="card"><h3>{d['title']}</h3><small>{date}</small><br><br>
             <a href="navi://dlw/view/{d['id']}" class="btn">View Offline</a> 
             <a href="navi://dlw/delete/{d['id']}" class="btn btn-danger">Delete</a></div>"""
-        browser.setHtml(f"<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Offline Downloads</h1>{rows or 'No downloads yet.'}</div></body></html>", QUrl("local://navi/dlw"))
+        
+        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Offline Downloads</h1>{rows or 'No downloads yet.'}</div></body></html>""", QUrl("local://navi/dlw"))
 
     def render_history(self, browser):
         dm = self.data['settings']['dark_mode']
@@ -448,14 +449,16 @@ class NaviBrowser(QMainWindow):
         for h in self.data['history']:
             t = datetime.fromtimestamp(h['time']).strftime('%b %d, %H:%M')
             rows += f"""<div class="card"><a href="{h['url']}"><b>{h.get('title','Page')}</b></a><br><small>{h['url']} - {t}</small></div>"""
-        browser.setHtml(f"<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>History</h1>{rows}</div></body></html>", QUrl("local://navi/history"))
+        
+        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>History</h1>{rows}</div></body></html>""", QUrl("local://navi/history"))
 
     def render_sites(self, browser):
         dm = self.data['settings']['dark_mode']
         rows = ""
         for d, v in self.data['sites'].items():
             rows += f"""<div class="card"><b>{v['title']}</b> ({d}) <br><br><a href="{d}" class="btn">Visit</a> <a href="navi://pw/edit/{d}" class="btn btn-success">Edit</a> <a href="navi://pw/delete/{d}" class="btn btn-danger">Delete</a></div>"""
-        browser.setHtml(f"<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>My Sites</h1><a href="navi://pw/new" class="btn">+ New Site</a><br><br>{rows}</div></body></html>", QUrl("local://navi/pw"))
+        
+        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>My Sites</h1><a href="navi://pw/new" class="btn">+ New Site</a><br><br>{rows}</div></body></html>""", QUrl("local://navi/pw"))
 
     def render_extensions(self, browser):
         dm = self.data['settings']['dark_mode']
@@ -463,7 +466,8 @@ class NaviBrowser(QMainWindow):
         for k, v in self.data['extensions'].items():
             clr = "green" if v['active'] else "gray"
             rows += f"""<div class="card" style="border-left:5px solid {clr}"><h3>{k}</h3><button class="btn" onclick="window.location='navi://cws/toggle/{k}'">Toggle</button> <button class="btn" onclick="window.location='navi://cws/edit/{k}'">Edit</button></div>"""
-        browser.setHtml(f"<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Extensions</h1><a href="navi://cws/new" class="btn">+ New Ext</a><br><br>{rows}</div></body></html>", QUrl("local://navi/cws"))
+        
+        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Extensions</h1><a href="navi://cws/new" class="btn">+ New Ext</a><br><br>{rows}</div></body></html>""", QUrl("local://navi/cws"))
     
     def render_proxy(self, browser):
         dm = self.data['settings']['dark_mode']
@@ -528,7 +532,6 @@ class NaviBrowser(QMainWindow):
                 with open(DATA_FILE, 'r') as f: 
                     loaded = json.load(f)
                     self.data.update(loaded)
-                    # Ensure settings keys exist
                     if 'settings' not in self.data: self.data['settings'] = {'dark_mode':False, 'wholesome_switch':True, 'home_notes':''}
                     if 'downloads' not in self.data: self.data['downloads'] = []
             except: pass
