@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QLineEdit,
     QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit,
     QMessageBox, QTabWidget, QMenu, QDialog, QPlainTextEdit,
-    QHBoxLayout
+    QHBoxLayout, QComboBox
 )
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 
@@ -16,25 +16,40 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineP
 DATA_FILE = "navi_data.json"
 TWO_WEEKS_SECONDS = 1209600
 
-# --- Wholesome History Generator ---
+# --- Helper Functions ---
 def get_wholesome_history():
     return [
         {"url": "https://www.google.com/search?q=how+to+make+my+parents+proud", "time": time.time(), "title": "Self Improvement"},
         {"url": "https://www.google.com/search?q=local+animal+shelter+donations", "time": time.time() - 100, "title": "Charity"},
         {"url": "https://www.youtube.com/watch?v=cute_puppies", "time": time.time() - 200, "title": "Stress Relief"},
-        {"url": "https://www.wikipedia.org/wiki/Peace", "time": time.time() - 1000, "title": "Education"},
     ]
+
+def is_seasonal(event):
+    today = datetime.now()
+    if event == "christmas":
+        # Dec 1 to Jan 8
+        if today.month == 12 or (today.month == 1 and today.day <= 8):
+            return True
+    elif event == "halloween":
+        # October
+        if today.month == 10:
+            return True
+    return False
 
 # --- Styles ---
 class ModernStyles:
     @staticmethod
-    def get(dark_mode):
-        bg = "#212529" if dark_mode else "#f8f9fa"
-        fg = "#f8f9fa" if dark_mode else "#212529"
-        input_bg = "#343a40" if dark_mode else "#ffffff"
-        border = "#495057" if dark_mode else "#dee2e6"
-        btn_hover = "#495057" if dark_mode else "#e9ecef"
-        
+    def get(theme_name):
+        # Default Colors
+        bg, fg, input_bg, border, btn_hover, accent = "#f8f9fa", "#212529", "#ffffff", "#dee2e6", "#e9ecef", "#0d6efd"
+
+        if theme_name == "dark":
+            bg, fg, input_bg, border, btn_hover, accent = "#212529", "#f8f9fa", "#343a40", "#495057", "#495057", "#0d6efd"
+        elif theme_name == "christmas":
+            bg, fg, input_bg, border, btn_hover, accent = "#1a472a", "#f0f0f0", "#2d5a3f", "#5d8a6f", "#c41e3a", "#d42426" # Green/Red
+        elif theme_name == "halloween":
+            bg, fg, input_bg, border, btn_hover, accent = "#1a1a1a", "#ff9a00", "#2d2d2d", "#444", "#333", "#ff7518" # Black/Orange
+
         return f"""
         QMainWindow {{ background-color: {bg}; color: {fg}; }}
         QWidget {{ color: {fg}; }}
@@ -44,11 +59,11 @@ class ModernStyles:
             border-top-left-radius: 8px; border-top-right-radius: 8px;
             margin-right: 2px;
         }}
-        QTabBar::tab:selected {{ background: {bg}; border-bottom: 2px solid #0d6efd; font-weight: bold; }}
+        QTabBar::tab:selected {{ background: {bg}; border-bottom: 2px solid {accent}; font-weight: bold; }}
         QToolBar {{ background: {bg}; border-bottom: 1px solid {border}; spacing: 5px; }}
         QLineEdit {{
             background: {input_bg}; border: 1px solid {border}; border-radius: 15px;
-            padding: 6px 15px; color: {fg};
+            padding: 6px 15px; color: {fg}; selection-background-color: {accent};
         }}
         QPushButton {{
             background-color: transparent; border-radius: 5px; padding: 5px;
@@ -56,15 +71,13 @@ class ModernStyles:
         }}
         QPushButton:hover {{ background-color: {btn_hover}; }}
         QMenu {{ background: {input_bg}; color: {fg}; border: 1px solid {border}; }}
-        QMenu::item:selected {{ background: #0d6efd; color: white; }}
+        QMenu::item:selected {{ background: {accent}; color: white; }}
         QPlainTextEdit {{ background: {input_bg}; color: {fg}; border: 1px solid {border}; }}
         """
 
 # --- Custom Web Engine ---
 class NaviWebPage(QWebEnginePage):
-    # Fix for "Websites don't load" - Ignore SSL Errors
-    def certificateError(self, error):
-        return True 
+    def certificateError(self, error): return True # Ignore SSL errors
 
     def acceptNavigationRequest(self, url, _type, isMainFrame):
         if url.scheme() == "navi":
@@ -74,14 +87,17 @@ class NaviWebPage(QWebEnginePage):
             return False
         return super().acceptNavigationRequest(url, _type, isMainFrame)
 
-# --- Internal Pages HTML Generator ---
+# --- Internal Pages Generator ---
 class InternalPages:
     @staticmethod
-    def css(dark_mode):
-        bg = "#2b3035" if dark_mode else "#f8f9fa"
-        card_bg = "#343a40" if dark_mode else "#ffffff"
-        text = "#f8f9fa" if dark_mode else "#212529"
-        border = "#495057" if dark_mode else "#dee2e6"
+    def css(theme):
+        # Map theme to basic colors for HTML
+        is_dark = theme in ["dark", "christmas", "halloween"]
+        bg = "#2b3035" if is_dark else "#f8f9fa"
+        card_bg = "#343a40" if is_dark else "#ffffff"
+        text = "#f8f9fa" if is_dark else "#212529"
+        border = "#495057" if is_dark else "#dee2e6"
+        
         return f"""
         body {{ font-family: 'Segoe UI', sans-serif; background: {bg}; color: {text}; padding: 40px; margin: 0; }}
         .container {{ max-width: 1000px; margin: 0 auto; }}
@@ -91,131 +107,130 @@ class InternalPages:
         .btn:hover {{ background: #0b5ed7; }}
         .btn-danger {{ background: #dc3545; }}
         .btn-success {{ background: #198754; }}
+        .btn-gold {{ background: #ffc107; color: black; }}
         input, select, textarea {{ 
             padding: 12px; width: 100%; margin: 10px 0; border-radius: 6px; 
             border: 1px solid {border}; background: {bg}; color: {text}; box-sizing: border-box; 
         }}
         .widget-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }}
         .clock {{ font-size: 3em; font-weight: bold; text-align: center; margin: 20px 0; }}
-        .switch {{ position: relative; display: inline-block; width: 60px; height: 34px; }}
-        .switch input {{ opacity: 0; width: 0; height: 0; }}
-        .slider {{ position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }}
-        .slider:before {{ position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }}
-        input:checked + .slider {{ background-color: #2196F3; }}
-        input:checked + .slider:before {{ transform: translateX(26px); }}
+        .navit-badge {{ background: #ffc107; color: black; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 0.8em; vertical-align: middle; }}
         """
 
     @staticmethod
-    def home(dark_mode, notes):
-        return f"""<html><head><style>{InternalPages.css(dark_mode)}</style>
+    def home(theme, notes, navits, widgets_unlocked):
+        extra_widgets = ""
+        if widgets_unlocked:
+            extra_widgets = """
+            <div class="card">
+                <h3>🧮 Calculator</h3>
+                <input id="calc" placeholder="2 + 2" onchange="try{this.value = eval(this.value)}catch(e){this.value='Error'}">
+            </div>
+            <div class="card">
+                <h3>📅 Calendar</h3>
+                <p>Today is: <script>document.write(new Date().toDateString())</script></p>
+            </div>
+            """
+        
+        return f"""<html><head><style>{InternalPages.css(theme)}</style>
         <script>
-            function updateClock() {{
-                const now = new Date();
-                document.getElementById('clock').innerText = now.toLocaleTimeString();
-            }}
-            setInterval(updateClock, 1000);
-            function saveNotes(val) {{
-                window.location = 'navi://save_notes/' + encodeURIComponent(val);
-            }}
+            setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString(), 1000);
+            function saveNotes(val) {{ window.location = 'navi://save_notes/' + encodeURIComponent(val); }}
         </script>
         </head><body>
         <div class="container">
+            <div style="text-align:right;"><span class="navit-badge">🪙 {navits} Navits</span></div>
             <div id="clock" class="clock">00:00:00</div>
             <div class="widget-grid">
                 <div class="card">
-                    <h3>📝 Quick Notes</h3>
+                    <h3>📝 Notes</h3>
                     <textarea style="height: 150px; resize: none;" oninput="saveNotes(this.value)">{notes}</textarea>
                 </div>
+                {extra_widgets}
                 <div class="card" style="text-align:center;">
                     <h3>🚀 Navigation</h3>
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         <a href="navi://settings" class="btn">⚙️ Settings</a>
+                        <a href="navi://navits" class="btn btn-gold">🏆 Navits</a>
                         <a href="navi://pw" class="btn">🌐 My Sites</a>
                         <a href="navi://dlw" class="btn">⬇️ Downloads</a>
                         <a href="navi://history" class="btn">🕒 History</a>
                         <a href="navi://cws" class="btn">🧩 Extensions</a>
-                        <a href="navi://info" class="btn">ℹ️ Info</a>
                     </div>
                 </div>
             </div>
         </div></body></html>"""
 
-# --- Source Code Viewer ---
+# --- Editors & Viewers ---
 class SourceViewer(QDialog):
-    def __init__(self, html_content, parent=None):
+    def __init__(self, content, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Inspect Source")
-        self.resize(800, 600)
-        layout = QVBoxLayout()
-        text_edit = QPlainTextEdit()
-        text_edit.setPlainText(html_content)
-        text_edit.setReadOnly(True)
-        text_edit.setStyleSheet("font-family: Consolas, monospace; font-size: 14px;")
-        layout.addWidget(text_edit)
-        self.setLayout(layout)
+        self.resize(800,600)
+        t = QPlainTextEdit(content)
+        t.setReadOnly(True)
+        t.setStyleSheet("font-family: Consolas; font-size: 14px;")
+        l = QVBoxLayout()
+        l.addWidget(t)
+        self.setLayout(l)
 
-# --- Code Editor (Site/Ext) ---
 class CodeEditorWindow(QWidget):
     def __init__(self, browser_main, mode="site", key_to_edit=None):
         super().__init__()
         self.browser_main = browser_main
         self.mode = mode
         self.key_to_edit = key_to_edit
-        self.setWindowTitle(f"Navi Editor - {mode.capitalize()}")
+        self.setWindowTitle(f"Navi Editor")
         self.resize(900, 700)
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QVBoxLayout()
+        l = QVBoxLayout()
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Name")
         if self.key_to_edit: self.name_input.setReadOnly(True)
-        layout.addWidget(QLabel("Name:"))
-        layout.addWidget(self.name_input)
+        l.addWidget(QLabel("Name:"))
+        l.addWidget(self.name_input)
         
         if self.mode == "site":
-            self.title_input = QLineEdit()
-            self.title_input.setPlaceholderText("Page Title")
-            layout.addWidget(QLabel("Title:"))
-            layout.addWidget(self.title_input)
+            self.title_input = QLineEdit(); self.title_input.setPlaceholderText("Title")
+            l.addWidget(QLabel("Title:")); l.addWidget(self.title_input)
 
         self.content_input = QTextEdit()
-        layout.addWidget(QLabel("Code:"))
-        layout.addWidget(self.content_input)
+        l.addWidget(QLabel("Code:"))
+        l.addWidget(self.content_input)
 
-        save_btn = QPushButton("Save")
-        save_btn.setStyleSheet("background: #198754; color: white; padding: 10px; font-weight: bold;")
-        save_btn.clicked.connect(self.save_data)
-        layout.addWidget(save_btn)
-        self.setLayout(layout)
-        self.load_data()
+        btn = QPushButton("Save"); btn.setStyleSheet("background:#198754;color:white;padding:10px;")
+        btn.clicked.connect(self.save)
+        l.addWidget(btn)
+        self.setLayout(l)
+        self.load()
 
-    def load_data(self):
+    def load(self):
         if not self.key_to_edit: return
         if self.mode == "site":
-            data = self.browser_main.data['sites'].get(self.key_to_edit)
-            if data:
-                self.name_input.setText(self.key_to_edit.replace(".pw-navi", ""))
-                self.title_input.setText(data.get('title', ''))
-                self.content_input.setText(data.get('html_content', ''))
+            d = self.browser_main.data['sites'].get(self.key_to_edit)
+            if d:
+                suffix = self.browser_main.data['settings'].get('custom_suffix', '.pw-navi')
+                self.name_input.setText(self.key_to_edit.replace(suffix, ""))
+                self.title_input.setText(d['title'])
+                self.content_input.setText(d['html_content'])
         else:
-            data = self.browser_main.data['extensions'].get(self.key_to_edit)
-            if data:
-                self.name_input.setText(self.key_to_edit)
-                self.content_input.setText(data.get('code', ''))
+            d = self.browser_main.data['extensions'].get(self.key_to_edit)
+            if d: self.name_input.setText(self.key_to_edit); self.content_input.setText(d['code'])
 
-    def save_data(self):
-        name = self.name_input.text().strip()
-        code = self.content_input.toPlainText()
-        if not name: return
-
+    def save(self):
+        n = self.name_input.text().strip()
+        c = self.content_input.toPlainText()
+        if not n: return
+        
         if self.mode == "site":
-            full = f"{name.lower()}.pw-navi" if not name.endswith(".pw-navi") else name.lower()
-            self.browser_main.data['sites'][full] = {'domain': full, 'title': self.title_input.text(), 'html_content': code}
+            suffix = self.browser_main.data['settings'].get('custom_suffix', '.pw-navi')
+            full = f"{n.lower()}{suffix}" if not n.endswith(suffix) else n.lower()
+            self.browser_main.data['sites'][full] = {'domain': full, 'title': self.title_input.text(), 'html_content': c}
             self.browser_main.add_new_tab(QUrl(f"local://{full}/"))
         else:
-            self.browser_main.data['extensions'][name] = {'code': code, 'active': True}
-            
+            self.browser_main.data['extensions'][n] = {'code': c, 'active': True}
+        
         self.browser_main.save_to_disk()
         self.close()
 
@@ -225,43 +240,76 @@ class BrowserTab(QWebEngineView):
         super().__init__()
         self.parent_window = parent_window
         
-        # Enhanced Profile Settings
-        profile = QWebEngineProfile.defaultProfile()
-        profile.setHttpCacheType(QWebEngineProfile.MemoryHttpCache)
-        settings = self.settings()
-        settings.setAttribute(QWebEngineSettings.PluginsEnabled, True)
-        settings.setAttribute(QWebEngineSettings.JavascriptEnabled, True)
-        settings.setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
-        settings.setAttribute(QWebEngineSettings.ScrollAnimatorEnabled, True)
+        # Youtube Timer
+        self.yt_timer = QTimer(self)
+        self.yt_timer.timeout.connect(self.check_youtube_watch)
+        self.yt_timer.start(60000) # Check every minute
+        self.yt_minutes = 0
+        self.current_yt_url = ""
+
+        # Profile
+        p = QWebEngineProfile.defaultProfile()
+        p.setHttpCacheType(QWebEngineProfile.MemoryHttpCache)
+        self.settings().setAttribute(QWebEngineSettings.PluginsEnabled, True)
+        self.settings().setAttribute(QWebEngineSettings.JavascriptEnabled, True)
+        self.settings().setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
 
         self.setPage(NaviWebPage(self))
         self.page().loadFinished.connect(self.on_load_finished)
+        self.urlChanged.connect(self.on_url_changed)
+
+    def on_url_changed(self, url):
+        u_str = url.toString()
+        if "youtube.com/watch" not in u_str:
+            self.yt_minutes = 0
+            self.current_yt_url = ""
+        else:
+            if u_str != self.current_yt_url:
+                self.yt_minutes = 0
+                self.current_yt_url = u_str
+
+    def check_youtube_watch(self):
+        if "youtube.com/watch" in self.url().toString():
+            self.yt_minutes += 1
+            if self.yt_minutes == 15:
+                self.parent_window.add_navits(1, "Watched YouTube (15m)")
+                self.yt_minutes = 0 # Reset or keep counting? Let's reset for "every 15m" logic
 
     def on_load_finished(self, ok):
         if not ok: return
+        
+        # Extensions
         for name, ext in self.parent_window.data['extensions'].items():
             if ext['active']: self.page().runJavaScript(ext['code'])
         
+        # History & Navits (Search Rewards)
         url = self.url().toString()
+        host = self.url().host()
+        
+        # Reward Logic (Rate limited in parent)
+        if "google.com" in host: self.parent_window.attempt_search_reward(1)
+        elif "duckduckgo.com" in host: self.parent_window.attempt_search_reward(1)
+        elif "ecosia.org" in host: self.parent_window.attempt_search_reward(2)
+
         if not url.startswith("local://") and not url.startswith("navi://"):
             self.parent_window.add_to_history(url, self.title())
 
-    def createWindow(self, _type):
-        return self.parent_window.add_new_tab()
+    def createWindow(self, _type): return self.parent_window.add_new_tab()
 
 # --- Main Window ---
 class NaviBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Navi Browser Ultimate")
+        self.setWindowTitle("Navi Browser Ultimate v4")
         self.resize(1300, 900)
         
-        # Data & Defaults
+        # Defaults
         self.data = {
             'sites': {}, 'extensions': {}, 'history': [], 'downloads': [],
-            'settings': {'dark_mode': False, 'wholesome_switch': True, 'home_notes': ''},
+            'settings': {'theme': 'light', 'wholesome_switch': True, 'home_notes': '', 'custom_suffix': '.pw-navi'},
             'proxy': {'type': 'Google', 'key': '', 'url': ''},
-            'last_active': time.time()
+            'navits': 0, 'inventory': [], 'last_active': time.time(),
+            'last_reward_time': 0
         }
         
         self.load_from_disk()
@@ -269,39 +317,23 @@ class NaviBrowser(QMainWindow):
         self.setup_ui()
         self.apply_theme()
         
-        # Start Page
         self.add_new_tab(QUrl("local://navi/"))
 
     def setup_ui(self):
-        toolbar = QToolBar()
-        toolbar.setMovable(False)
-        self.addToolBar(toolbar)
+        tb = QToolBar(); tb.setMovable(False); self.addToolBar(tb)
 
-        # Main Nav
-        actions = [("←", self.go_back), ("→", self.go_forward), ("⟳", self.reload_page), ("🏠", self.go_home)]
-        for t, f in actions:
-            btn = QPushButton(t)
-            btn.setFixedSize(35, 35)
-            btn.clicked.connect(f)
-            toolbar.addWidget(btn)
+        # Nav
+        for t, f in [("←", self.go_back), ("→", self.go_forward), ("⟳", self.reload_page), ("🏠", self.go_home)]:
+            b = QPushButton(t); b.setFixedSize(35,35); b.clicked.connect(f); tb.addWidget(b)
 
         self.url_bar = QLineEdit()
         self.url_bar.setPlaceholderText("Search or enter address...")
         self.url_bar.returnPressed.connect(self.navigate)
-        toolbar.addWidget(self.url_bar)
+        tb.addWidget(self.url_bar)
 
         # Tools
-        tools = [
-            ("⬇️", self.download_page, "Download Offline"),
-            ("< >", self.inspect_page, "View Source"),
-            ("+", self.add_new_tab, "New Tab")
-        ]
-        for t, f, tip in tools:
-            btn = QPushButton(t)
-            btn.setToolTip(tip)
-            btn.setFixedSize(35, 35)
-            btn.clicked.connect(f)
-            toolbar.addWidget(btn)
+        for t, f, tip in [("⬇️", self.download_page, "DL"), ("< >", self.inspect_page, "Src"), ("+", self.add_new_tab_safe, "New Tab")]:
+            b = QPushButton(t); b.setToolTip(tip); b.setFixedSize(35,35); b.clicked.connect(f); tb.addWidget(b)
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
@@ -310,16 +342,26 @@ class NaviBrowser(QMainWindow):
         self.tabs.currentChanged.connect(self.update_url_bar)
         self.setCentralWidget(self.tabs)
 
+    # --- Navits Logic ---
+    def attempt_search_reward(self, amount):
+        now = time.time()
+        # 60 second cooldown on search rewards
+        if now - self.data.get('last_reward_time', 0) > 60:
+            self.add_navits(amount, "Search Reward")
+            self.data['last_reward_time'] = now
+    
+    def add_navits(self, amount, reason=""):
+        self.data['navits'] = self.data.get('navits', 0) + amount
+        print(f"Earned {amount} Navits: {reason} (Total: {self.data['navits']})")
+        self.save_to_disk()
+
     # --- Feature Logic ---
     def check_dead_mans_switch(self):
         if not self.data['settings']['wholesome_switch']: return
-        
-        now = time.time()
-        last = self.data.get('last_active', now)
-        if now - last > TWO_WEEKS_SECONDS:
+        if time.time() - self.data.get('last_active', 0) > TWO_WEEKS_SECONDS:
             QMessageBox.information(self, "Welcome Back", "Optimizing your experience...")
             self.data['history'] = get_wholesome_history()
-        self.data['last_active'] = now
+        self.data['last_active'] = time.time()
         self.save_to_disk()
 
     def add_to_history(self, url, title):
@@ -328,167 +370,217 @@ class NaviBrowser(QMainWindow):
         self.data['history'] = self.data['history'][:1000]
         self.save_to_disk()
 
-    def download_page(self):
-        tab = self.tabs.currentWidget()
-        if not tab: return
-        tab.page().toHtml(lambda html: self.save_download(tab.title(), html))
+    # --- Safe Tab Adding (Crash Fix) ---
+    def add_new_tab_safe(self):
+        try:
+            self.add_new_tab()
+        except Exception as e:
+            print(f"Error adding tab: {e}")
 
-    def save_download(self, title, html):
-        self.data['downloads'].append({
-            'title': title, 'html': html, 'date': time.time(),
-            'id': str(int(time.time()))
-        })
-        self.save_to_disk()
-        QMessageBox.information(self, "Saved", "Page saved for offline viewing!")
+    def download_page(self):
+        t = self.tabs.currentWidget()
+        if t: t.page().toHtml(lambda h: self.save_download(t.title(), h))
+
+    def save_download(self, t, h):
+        self.data['downloads'].append({'title': t, 'html': h, 'date': time.time(), 'id': str(int(time.time()))})
+        self.save_to_disk(); QMessageBox.information(self, "Saved", "Page saved offline!")
 
     def inspect_page(self):
-        tab = self.tabs.currentWidget()
-        if not tab: return
-        tab.page().toHtml(lambda html: SourceViewer(html, self).exec_())
+        t = self.tabs.currentWidget()
+        if t: t.page().toHtml(lambda h: SourceViewer(h, self).exec_())
 
-    # --- Internal Page Routing ---
+    # --- Routing ---
     def handle_internal_pages(self, url, browser):
         cmd = url.lower().replace("navi://", "").strip("/")
-        dm = self.data['settings']['dark_mode']
+        theme = self.data['settings']['theme']
         
         if cmd == "" or cmd == "home":
-            browser.setHtml(InternalPages.home(dm, self.data['settings']['home_notes']), QUrl("local://navi/"))
+            unlocked = "widgets" in self.data['inventory']
+            browser.setHtml(InternalPages.home(theme, self.data['settings']['home_notes'], self.data.get('navits',0), unlocked), QUrl("local://navi/"))
+        elif cmd == "navits":
+            self.render_navits(browser)
+        elif cmd == "navits/buy":
+            self.render_store(browser)
         elif cmd == "settings":
             self.render_settings(browser)
-        elif cmd == "dlw":
-            self.render_downloads(browser)
-        elif cmd == "history":
-            self.render_history(browser)
         elif cmd == "pw":
             self.render_sites(browser)
         elif cmd == "cws":
             self.render_extensions(browser)
-        elif cmd == "proxy":
-            self.render_proxy(browser)
+        elif cmd == "history":
+            self.render_history(browser)
+        elif cmd == "dlw":
+            self.render_downloads(browser)
         elif cmd == "info":
-            self.render_info(browser)
+             # Fixed syntax error with triple quotes
+            browser.setHtml(f"""<html><head><style>{InternalPages.css(theme)}</style></head><body><div class="container"><h1>Info</h1><div class="card">Navi Browser v4<br><br><a href="https://discord.gg/64um79VVMa" class="btn" style="background:#5865F2">Discord</a></div></div></body></html>""", QUrl("local://navi/info"))
             
         # Commands
         elif cmd.startswith("save_notes/"):
-            note = QUrl.fromPercentEncoding(url.split("save_notes/")[1].encode())
-            self.data['settings']['home_notes'] = note
+            self.data['settings']['home_notes'] = QUrl.fromPercentEncoding(url.split("save_notes/")[1].encode())
             self.save_to_disk()
-        elif cmd.startswith("settings/toggle/"):
-            setting = url.split("toggle/")[1]
-            if setting in self.data['settings']:
-                self.data['settings'][setting] = not self.data['settings'][setting]
-                if setting == 'dark_mode': self.apply_theme()
+        elif cmd.startswith("settings/set_theme/"):
+            t = url.split("set_theme/")[1]
+            self.data['settings']['theme'] = t
+            self.apply_theme()
+            self.save_to_disk(); self.render_settings(browser)
+        elif cmd.startswith("settings/set_suffix/"):
+            s = QUrl.fromPercentEncoding(url.split("set_suffix/")[1].encode())
+            if not s.startswith("."): s = "." + s
+            if not s.endswith(".navi"): 
+                QMessageBox.warning(self, "Invalid", "Suffix must be empty or just a word, code adds .navi")
+            else:
+                self.data['settings']['custom_suffix'] = s
                 self.save_to_disk()
-                self.render_settings(browser)
-        elif cmd.startswith("dlw/view/"):
-            did = url.split("view/")[1]
-            page = next((d for d in self.data['downloads'] if d['id'] == did), None)
-            if page: browser.setHtml(page['html'], QUrl("local://offline"))
-        elif cmd.startswith("dlw/delete/"):
-            did = url.split("delete/")[1]
-            self.data['downloads'] = [d for d in self.data['downloads'] if d['id'] != did]
-            self.save_to_disk()
-            self.render_downloads(browser)
-        
+            self.render_settings(browser)
+        elif cmd.startswith("store/buy/"):
+            item = url.split("buy/")[1]
+            self.buy_item(item)
+            self.render_store(browser)
+
         # Editors
-        elif cmd == "pw/new":
-            self.editor = CodeEditorWindow(self, "site"); self.editor.show()
-        elif cmd.startswith("pw/edit/"):
-            d = QUrl.fromPercentEncoding(url.split("edit/")[1].encode())
-            self.editor = CodeEditorWindow(self, "site", d); self.editor.show()
+        elif cmd == "pw/new": CodeEditorWindow(self, "site").show()
+        elif cmd.startswith("pw/edit/"): CodeEditorWindow(self, "site", QUrl.fromPercentEncoding(url.split("edit/")[1].encode())).show()
         elif cmd.startswith("pw/delete/"):
             d = QUrl.fromPercentEncoding(url.split("delete/")[1].encode())
             if d in self.data['sites']: del self.data['sites'][d]; self.save_to_disk()
             self.render_sites(browser)
-            
-        elif cmd == "cws/new":
-            self.editor = CodeEditorWindow(self, "ext"); self.editor.show()
-        elif cmd.startswith("cws/edit/"):
-            n = QUrl.fromPercentEncoding(url.split("edit/")[1].encode())
-            self.editor = CodeEditorWindow(self, "ext", n); self.editor.show()
+        elif cmd == "cws/new": CodeEditorWindow(self, "ext").show()
+        elif cmd.startswith("cws/edit/"): CodeEditorWindow(self, "ext", QUrl.fromPercentEncoding(url.split("edit/")[1].encode())).show()
         elif cmd.startswith("cws/toggle/"):
             n = QUrl.fromPercentEncoding(url.split("toggle/")[1].encode())
-            if n in self.data['extensions']:
+            if n in self.data['extensions']: 
                 self.data['extensions'][n]['active'] = not self.data['extensions'][n]['active']
                 self.save_to_disk()
             self.render_extensions(browser)
 
+    def buy_item(self, item_id):
+        prices = {"christmas": 150, "halloween": 150, "suffix": 250, "widgets": 200}
+        
+        # Seasonal Check
+        if item_id in ["christmas", "halloween"] and not is_seasonal(item_id):
+            QMessageBox.warning(self, "Unavailable", "This item is not currently available!")
+            return
+
+        price = prices.get(item_id, 9999)
+        balance = self.data.get('navits', 0)
+
+        if item_id in self.data['inventory']:
+            QMessageBox.information(self, "Owned", "You already own this item.")
+            return
+
+        if balance >= price:
+            self.data['navits'] -= price
+            self.data['inventory'].append(item_id)
+            self.save_to_disk()
+            QMessageBox.information(self, "Success", f"Bought {item_id}!")
+        else:
+            QMessageBox.warning(self, "Poor", f"Need {price} Navits. You have {balance}.")
+
     # --- Renderers ---
-    def render_settings(self, browser):
+    def render_navits(self, b):
+        t = self.data['settings']['theme']
+        # Fixed syntax error with triple quotes
+        html = f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container">
+        <h1>🏆 Navits System</h1>
+        <div class="card">
+            <h2>Balance: {self.data.get('navits', 0)} Navits</h2>
+            <p>Earn points by browsing and watching!</p>
+            <ul>
+                <li>Google/DuckDuckGo Search: +1</li>
+                <li>Ecosia Search: +2</li>
+                <li>YouTube (15 mins): +1</li>
+            </ul>
+            <a href="navi://navits/buy" class="btn btn-gold">Go to Store</a>
+        </div></div></body></html>"""
+        b.setHtml(html, QUrl("local://navi/navits"))
+
+    def render_store(self, b):
+        t = self.data['settings']['theme']
+        inv = self.data['inventory']
+        
+        # Items logic
+        items_html = ""
+        
+        # Christmas
+        btn_cls = "btn-success" if is_seasonal("christmas") else "btn-danger"
+        lbl = "Buy (150 N)" if "christmas" not in inv else "Owned"
+        action = "navi://store/buy/christmas" if "christmas" not in inv else "#"
+        items_html += f"""<div class="card"><h3>🎄 Christmas Theme</h3><p>Seasonal (Dec-Jan)</p><a href="{action}" class="btn {btn_cls}">{lbl}</a></div>"""
+
+        # Halloween
+        btn_cls = "btn-success" if is_seasonal("halloween") else "btn-danger"
+        lbl = "Buy (150 N)" if "halloween" not in inv else "Owned"
+        action = "navi://store/buy/halloween" if "halloween" not in inv else "#"
+        items_html += f"""<div class="card"><h3>🎃 Halloween Theme</h3><p>Seasonal (Oct)</p><a href="{action}" class="btn {btn_cls}">{lbl}</a></div>"""
+
+        # Suffix
+        lbl = "Buy (250 N)" if "suffix" not in inv else "Owned"
+        action = "navi://store/buy/suffix" if "suffix" not in inv else "#"
+        items_html += f"""<div class="card"><h3>🔗 Custom Domain Suffix</h3><p>Change .pw-navi to your own suffix!</p><a href="{action}" class="btn">{lbl}</a></div>"""
+
+        # Widgets
+        lbl = "Buy (200 N)" if "widgets" not in inv else "Owned"
+        action = "navi://store/buy/widgets" if "widgets" not in inv else "#"
+        items_html += f"""<div class="card"><h3>🧩 Pro Widgets</h3><p>Calculator & Calendar on start page.</p><a href="{action}" class="btn">{lbl}</a></div>"""
+
+        # Fixed syntax error with triple quotes
+        b.setHtml(f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container"><h1>🛒 Navits Store</h1><p>Balance: {self.data.get('navits',0)}</p><div class="widget-grid">{items_html}</div></div></body></html>""", QUrl("local://navi/store"))
+
+    def render_settings(self, b):
         s = self.data['settings']
-        dm = s['dark_mode']
-        html = f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container">
-        <h1>Settings</h1>
-        <div class="card">
-            <h3>🎨 Appearance</h3>
-            <label class="switch"><input type="checkbox" {'checked' if s['dark_mode'] else ''} onclick="window.location='navi://settings/toggle/dark_mode'"><span class="slider"></span></label> Dark Mode
-        </div>
-        <div class="card">
-            <h3>👻 Privacy & Safety</h3>
-            <label class="switch"><input type="checkbox" {'checked' if s['wholesome_switch'] else ''} onclick="window.location='navi://settings/toggle/wholesome_switch'"><span class="slider"></span></label> 
-            <b>Dead Man's Switch (Wholesome History)</b><br>
-            <small>If inactive for 14 days, replace history with wholesome content.</small>
-        </div>
-        </div></body></html>"""
-        browser.setHtml(html, QUrl("local://navi/settings"))
-
-    def render_downloads(self, browser):
-        dm = self.data['settings']['dark_mode']
-        rows = ""
-        for d in self.data['downloads']:
-            date = datetime.fromtimestamp(d['date']).strftime('%Y-%m-%d %H:%M')
-            rows += f"""<div class="card"><h3>{d['title']}</h3><small>{date}</small><br><br>
-            <a href="navi://dlw/view/{d['id']}" class="btn">View Offline</a> 
-            <a href="navi://dlw/delete/{d['id']}" class="btn btn-danger">Delete</a></div>"""
+        t = s['theme']
+        inv = self.data['inventory']
         
-        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Offline Downloads</h1>{rows or 'No downloads yet.'}</div></body></html>""", QUrl("local://navi/dlw"))
+        themes_html = """<a href="navi://settings/set_theme/light" class="btn">Light</a> <a href="navi://settings/set_theme/dark" class="btn" style="background:#333">Dark</a>"""
+        if "christmas" in inv: themes_html += """ <a href="navi://settings/set_theme/christmas" class="btn" style="background:green">Christmas</a>"""
+        if "halloween" in inv: themes_html += """ <a href="navi://settings/set_theme/halloween" class="btn" style="background:orange">Halloween</a>"""
 
-    def render_history(self, browser):
-        dm = self.data['settings']['dark_mode']
-        rows = ""
-        for h in self.data['history']:
-            t = datetime.fromtimestamp(h['time']).strftime('%b %d, %H:%M')
-            rows += f"""<div class="card"><a href="{h['url']}"><b>{h.get('title','Page')}</b></a><br><small>{h['url']} - {t}</small></div>"""
-        
-        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>History</h1>{rows}</div></body></html>""", QUrl("local://navi/history"))
+        suffix_html = ""
+        if "suffix" in inv:
+            suffix_html = f"""<div class="card"><h3>🔗 Custom Suffix</h3><input id="suf" value="{s.get('custom_suffix', '.pw-navi')}"><button class="btn" onclick="window.location='navi://settings/set_suffix/'+encodeURIComponent(document.getElementById('suf').value)">Update</button></div>"""
 
-    def render_sites(self, browser):
-        dm = self.data['settings']['dark_mode']
-        rows = ""
-        for d, v in self.data['sites'].items():
-            rows += f"""<div class="card"><b>{v['title']}</b> ({d}) <br><br><a href="{d}" class="btn">Visit</a> <a href="navi://pw/edit/{d}" class="btn btn-success">Edit</a> <a href="navi://pw/delete/{d}" class="btn btn-danger">Delete</a></div>"""
-        
-        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>My Sites</h1><a href="navi://pw/new" class="btn">+ New Site</a><br><br>{rows}</div></body></html>""", QUrl("local://navi/pw"))
+        # Fixed syntax error with triple quotes
+        html = f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container"><h1>Settings</h1><div class="card"><h3>🎨 Theme</h3>{themes_html}</div>{suffix_html}</div></body></html>"""
+        b.setHtml(html, QUrl("local://navi/settings"))
 
-    def render_extensions(self, browser):
-        dm = self.data['settings']['dark_mode']
-        rows = ""
-        for k, v in self.data['extensions'].items():
-            clr = "green" if v['active'] else "gray"
-            rows += f"""<div class="card" style="border-left:5px solid {clr}"><h3>{k}</h3><button class="btn" onclick="window.location='navi://cws/toggle/{k}'">Toggle</button> <button class="btn" onclick="window.location='navi://cws/edit/{k}'">Edit</button></div>"""
-        
-        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Extensions</h1><a href="navi://cws/new" class="btn">+ New Ext</a><br><br>{rows}</div></body></html>""", QUrl("local://navi/cws"))
-    
-    def render_proxy(self, browser):
-        dm = self.data['settings']['dark_mode']
-        p = self.data['proxy']
-        html = f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>Proxy</h1><div class="card"><label>Type</label><select id="t"><option>Google</option><option>Cloudflare</option></select><label>Key</label><input id="k" value="{p['key']}"><label>URL</label><input id="u"><button class="btn" onclick="run()">Go</button></div></div>
-        <script>function run() {{ window.location='navi://proxy/run/'+document.getElementById('t').value+'/'+encodeURIComponent(document.getElementById('k').value)+'/'+encodeURIComponent(document.getElementById('u').value); }}</script></body></html>"""
-        browser.setHtml(html, QUrl("local://navi/proxy"))
+    def render_sites(self, b):
+        t = self.data['settings']['theme']
+        r = ""
+        for d, v in self.data['sites'].items(): r += f"""<div class="card"><b>{v['title']}</b> ({d})<br><br><a href="{d}" class="btn">Visit</a> <a href="navi://pw/edit/{d}" class="btn btn-success">Edit</a> <a href="navi://pw/delete/{d}" class="btn btn-danger">Delete</a></div>"""
+        # Fixed syntax error with triple quotes
+        b.setHtml(f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container"><h1>My Sites</h1><a href="navi://pw/new" class="btn">+ New</a><br><br>{r}</div></body></html>""", QUrl("local://navi/pw"))
 
-    def render_info(self, browser):
-        dm = self.data['settings']['dark_mode']
-        browser.setHtml(f"""<html><head><style>{InternalPages.css(dm)}</style></head><body><div class="container"><h1>About Navi</h1><div class="card">Version: Ultimate v3<br><br><a href="https://discord.gg/64um79VVMa" class="btn" style="background:#5865F2">Discord</a></div></div></body></html>""", QUrl("local://navi/info"))
+    def render_extensions(self, b):
+        t = self.data['settings']['theme']
+        r = ""
+        for k, v in self.data['extensions'].items(): 
+            c = "green" if v['active'] else "gray"
+            r += f"""<div class="card" style="border-left:5px solid {c}"><h3>{k}</h3><a href="navi://cws/toggle/{k}" class="btn">Toggle</a> <a href="navi://cws/edit/{k}" class="btn">Edit</a></div>"""
+        # Fixed syntax error with triple quotes
+        b.setHtml(f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container"><h1>Extensions</h1><a href="navi://cws/new" class="btn">+ New</a><br><br>{r}</div></body></html>""", QUrl("local://navi/cws"))
 
-    # --- Standard Funcs ---
+    def render_history(self, b):
+        t = self.data['settings']['theme']
+        r = ""
+        for h in self.data['history']: r += f"""<div class="card"><a href="{h['url']}"><b>{h.get('title','Page')}</b></a><br><small>{h['url']}</small></div>"""
+        # Fixed syntax error with triple quotes
+        b.setHtml(f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container"><h1>History</h1>{r}</div></body></html>""", QUrl("local://navi/history"))
+
+    def render_downloads(self, b):
+        t = self.data['settings']['theme']
+        r = ""
+        for d in self.data['downloads']: r += f"""<div class="card"><h3>{d['title']}</h3><a href="navi://dlw/view/{d['id']}" class="btn">View</a> <a href="navi://dlw/delete/{d['id']}" class="btn btn-danger">Delete</a></div>"""
+        # Fixed syntax error with triple quotes
+        b.setHtml(f"""<html><head><style>{InternalPages.css(t)}</style></head><body><div class="container"><h1>Downloads</h1>{r}</div></body></html>""", QUrl("local://navi/dlw"))
+
+    # --- Std Funcs ---
     def add_new_tab(self, qurl=None, label="New Tab"):
         if qurl is None: qurl = QUrl("local://navi/")
-        browser = BrowserTab(self)
-        browser.setUrl(qurl)
-        browser.urlChanged.connect(lambda q, b=browser: self.update_url_bar_for_tab(q, b))
-        browser.titleChanged.connect(lambda t, b=browser: self.update_tab_title(t, b))
-        i = self.tabs.addTab(browser, label)
-        self.tabs.setCurrentIndex(i)
+        b = BrowserTab(self); b.setUrl(qurl)
+        b.urlChanged.connect(lambda q, b=b: self.update_url_bar_for_tab(q, b))
+        b.titleChanged.connect(lambda t, b=b: self.update_tab_title(t, b))
+        i = self.tabs.addTab(b, label); self.tabs.setCurrentIndex(i)
 
     def close_tab(self, i): 
         if self.tabs.count() > 1: self.tabs.removeTab(i)
@@ -518,14 +610,18 @@ class NaviBrowser(QMainWindow):
         if not browser: return
         
         if text.lower().startswith("navi://"): self.handle_internal_pages(text, browser)
-        elif text.lower().endswith(".pw-navi"):
-            d = self.data['sites'].get(text.lower())
-            if d: browser.setHtml(d['html_content'], QUrl(f"local://{text}/"))
         else:
-            url = QUrl(text)
-            if "." not in text: url = QUrl(f"https://www.google.com/search?q={text}")
-            elif "://" not in text: url = QUrl("https://" + text)
-            browser.setUrl(url)
+            # Custom Suffix Support
+            suffix = self.data['settings'].get('custom_suffix', '.pw-navi')
+            if text.lower().endswith(suffix):
+                d = self.data['sites'].get(text.lower())
+                if d: browser.setHtml(d['html_content'], QUrl(f"local://{text}/"))
+                return
+
+            u = QUrl(text)
+            if "." not in text: u = QUrl(f"https://www.google.com/search?q={text}")
+            elif "://" not in text: u = QUrl("https://" + text)
+            browser.setUrl(u)
 
     def save_to_disk(self):
         try:
@@ -538,15 +634,15 @@ class NaviBrowser(QMainWindow):
                 with open(DATA_FILE, 'r') as f: 
                     loaded = json.load(f)
                     self.data.update(loaded)
-                    if 'settings' not in self.data: self.data['settings'] = {'dark_mode':False, 'wholesome_switch':True, 'home_notes':''}
+                    if 'settings' not in self.data: self.data['settings'] = {'theme': 'light', 'wholesome_switch':True, 'home_notes': '', 'custom_suffix': '.pw-navi'}
                     if 'downloads' not in self.data: self.data['downloads'] = []
+                    if 'navits' not in self.data: self.data['navits'] = 0
+                    if 'inventory' not in self.data: self.data['inventory'] = []
             except: pass
 
     def apply_theme(self):
-        self.setStyleSheet(ModernStyles.get(self.data['settings']['dark_mode']))
-        # Safe reload that checks if a tab exists first
-        if self.tabs.currentWidget():
-            self.tabs.currentWidget().reload()
+        self.setStyleSheet(ModernStyles.get(self.data['settings']['theme']))
+        if self.tabs.currentWidget(): self.tabs.currentWidget().reload()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
