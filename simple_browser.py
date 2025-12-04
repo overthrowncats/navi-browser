@@ -634,13 +634,24 @@ class NaviBrowser(QMainWindow):
                 with open(DATA_FILE, 'r') as f: 
                     loaded = json.load(f)
                     self.data.update(loaded)
-                    if 'settings' not in self.data: self.data['settings'] = {'theme': 'light', 'wholesome_switch':True, 'home_notes': '', 'custom_suffix': '.pw-navi'}
-                    if 'downloads' not in self.data: self.data['downloads'] = []
-                    if 'navits' not in self.data: self.data['navits'] = 0
+                    
+                    # --- MIGRATION LOGIC (The Fix) ---
+                    # Ensure all new keys exist in old data files
+                    if 'settings' not in self.data: self.data['settings'] = {}
+                    if 'theme' not in self.data['settings']: self.data['settings']['theme'] = 'light'
+                    if 'wholesome_switch' not in self.data['settings']: self.data['settings']['wholesome_switch'] = True
+                    if 'custom_suffix' not in self.data['settings']: self.data['settings']['custom_suffix'] = '.pw-navi'
+                    
                     if 'inventory' not in self.data: self.data['inventory'] = []
+                    if 'navits' not in self.data: self.data['navits'] = 0
+                    if 'sites' not in self.data: self.data['sites'] = {}
+                    if 'extensions' not in self.data: self.data['extensions'] = {}
+                    if 'history' not in self.data: self.data['history'] = []
+                    if 'downloads' not in self.data: self.data['downloads'] = []
             except: pass
 
     def apply_theme(self):
+        # Now self.data['settings']['theme'] is guaranteed to exist
         self.setStyleSheet(ModernStyles.get(self.data['settings']['theme']))
         if self.tabs.currentWidget(): self.tabs.currentWidget().reload()
 
