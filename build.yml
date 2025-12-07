@@ -1,0 +1,48 @@
+name: Automated Windows .exe Build
+
+# Triggers this workflow when code is pushed to the 'main' branch
+on:
+  push:
+    branches: [ main ]
+  # Allows you to run the workflow manually from the GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  build_windows_exe:
+    # Use a Windows runner to ensure the .exe is compiled correctly for Windows
+    runs-on: windows-latest
+    
+    steps:
+      # Step A: Check out the code from your repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step B: Set up your build environment
+      # IMPORTANT: Customize this for your language (e.g., Node.js, Python, C++, Rust)
+      - name: Setup Build Environment
+        # Example: If your browser is built with a Node.js framework:
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' 
+      
+      # Step C: Install dependencies (if needed)
+      - name: Install Dependencies
+        # Example for Node.js:
+        run: npm install
+
+      # Step D: Run your build command to create the .exe
+      - name: Run Build Command
+        # This is the most crucial step—replace this with the command 
+        # you currently use in your command prompt to create the .exe.
+        run: |
+          # Example command (Replace with your actual build command!)
+          npm run build-exe 
+          
+      # Step E: Upload the final .exe file as a downloadable artifact
+      # The 'path' must point to where your build command saves the .exe
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Navi-Web-Browser-Installer
+          # Update this path to where your .exe is located after the build
+          path: ./dist/Navi.exe 
