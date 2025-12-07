@@ -7,7 +7,7 @@ After downloading, just run the `OmxrBrowser.exe` file.
 
 > ⚠️ Windows might show a warning — click **More info → Run anyway**.
 
-[join our discird server for more information](https://discord.gg/2ps9Fq6fpH)
+[join our discord server for more information](https://discord.gg/2ps9Fq6fpH)
 
 ## 🛠️ How to Build
 first do this in the terminal(microsoft shell tab):
