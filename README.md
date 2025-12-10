@@ -1,8 +1,8 @@
 # navi Browser 🌐
-A lightweight, minimal web browser built with Python and PyQt5(PyQt6 might get added too).
+A lightweight, minimal web browser built with Python and PyQt5 and PyQt6.
 
 ## 📥 Download
-**👉 [Download version 1 here, use the command prompt at the bottom for the lastest version](https://github.com/omxrprob/navi-browser/releases/latest)**  
+**👉 Download version 1 here, use the command prompt at the bottom for the lastest version](https://github.com/omxrprob/navi-browser/releases/latest)**  
 After downloading, just run the `OmxrBrowser.exe` file.
 
 > ⚠️ Windows might show a warning — click **More info → Run anyway**.
