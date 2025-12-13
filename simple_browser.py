@@ -26,13 +26,6 @@ def get_wholesome_history():
         {"url": "https://www.youtube.com/watch?v=cute_kittens", "time": time.time() - 200, "title": "Kittens"},
     ]
 
-def is_seasonal(event):
-    m = datetime.now().month
-    d = datetime.now().day
-    if event == "christmas": return m == 12 or (m == 1 and d <= 8)
-    if event == "halloween": return m == 10
-    return False
-
 def get_search_url(engine, query):
     engines = {
         "Google": "https://www.google.com/search?q=",
@@ -48,6 +41,7 @@ def get_search_url(engine, query):
 class BrowserStyles:
     @staticmethod
     def get(theme, engine_mode):
+        # Fallback if theme doesn't exist in dict
         c = {
             "light": {"bg": "#f8f9fa", "fg": "#212529", "tab": "#ffffff", "sel": "#e9ecef", "bar": "#ffffff", "acc": "#0d6efd", "border": "#dee2e6"},
             "dark": {"bg": "#212529", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"},
@@ -56,8 +50,9 @@ class BrowserStyles:
             "cyberpunk": {"bg": "#0b0d17", "fg": "#00f3ff", "tab": "#121526", "sel": "#1c1f3a", "bar": "#121526", "acc": "#ff0099", "border": "#00f3ff"},
             "sunset": {"bg": "#2d1b2e", "fg": "#ffcc00", "tab": "#442244", "sel": "#b3446c", "bar": "#442244", "acc": "#f6511d", "border": "#b3446c"},
             "matrix": {"bg": "#000000", "fg": "#00ff00", "tab": "#0a0a0a", "sel": "#111", "bar": "#0a0a0a", "acc": "#008f11", "border": "#003300"},
-        }.get(theme, {})
-        if not c: c = {"bg": "#222222", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"}
+        }.get(theme)
+        
+        if not c: c = {"bg": "#212529", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"}
 
         radius = "12px" if engine_mode == "modern" else "0px"
         padding = "8px 20px" if engine_mode == "modern" else "4px 10px"
@@ -84,7 +79,7 @@ class BrowserStyles:
 class InternalPages:
     @staticmethod
     def css(theme):
-        # Generic CSS for internal pages (Settings, History, etc)
+        # Generic CSS for internal pages (Settings, History, etc) - escaped for Python f-strings
         is_dark = theme != "light"
         bg = "#2b3035" if is_dark else "#f8f9fa"
         card_bg = "#343a40" if is_dark else "#ffffff"
@@ -109,12 +104,15 @@ class InternalPages:
         navits = data['navits']
         
         # User requested background
-        bg_style = f"background-image: url('{s.get('bg_url', '')}');" if s.get('bg_url') and not s['bg_url'].startswith('#') else f"background-color: {s.get('bg_url', '#222222')};"
-        if not s.get('bg_url'): bg_style = "background-color: #222222;"
+        if s.get('bg_url') and not s['bg_url'].startswith('#'):
+            bg_style = f"background-image: url('{s['bg_url']}');"
+        else:
+            bg_style = f"background-color: {s.get('bg_url', '#222222')};"
 
         # Insert Navits Balance
         navit_display = f'<span class="btn btn-gold" style="position: absolute; top: 20px; right: 20px;">🪙 {navits}</span>'
 
+        # Note: We use double braces {{ }} for CSS blocks to avoid f-string errors
         return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -124,27 +122,38 @@ class InternalPages:
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+        
         body {{ {bg_style} background-size: cover; background-position: center; color: #FFFFFF; font-family: "Poppins", serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; transition: background-image 0.5s ease; }}
+        
         .container {{ text-align: center; position: relative; max-width: 900px; width: 95%; display: flex; flex-direction: column; align-items: center; }}
+        
         h1 {{ font-size: 3em; margin-bottom: 20px; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 10px rgba(0, 0, 0, 0.7); }}
+        
         .search-box {{ padding: 12px; font-size: 1.3em; font-family: "Poppins", serif; width: 500px; max-width: 80vw; border-radius: 15px; border: none; background-color: rgba(51, 51, 51, 0.7); color: #FFFFFF; margin-bottom: 20px; backdrop-filter: blur(5px); transition: box-shadow 0.3s ease; }}
         .search-box:focus {{ outline: none; box-shadow: 0 0 20px #000000d7; }}
+        
         .settings, .sidebar-toggle, .sidebar {{ z-index: 1000; }}
+        
         .settings {{ position: fixed; top: 20px; left: 60px; display: flex; gap: 10px; align-items: center; }}
         .settings input {{ padding: 8px; background-color: rgba(51, 51, 51, 0.8); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; }}
         .settings button {{ padding: 8px 12px; border: none; border-radius: 8px; background-color: #0d6efd; color: white; cursor: pointer; font-family: "Poppins", serif; }}
+        
         .sidebar-toggle {{ position: fixed; left: 10px; top: 10px; cursor: pointer; padding: 10px; background-color: #333333b0; border-radius: 50%; backdrop-filter: blur(5px); }}
+        
         .sidebar {{ position: fixed; left: -300px; top: 0; width: 300px; height: 100vh; background-color: #33333381; transition: left 0.5s ease; padding: 20px; box-sizing: border-box; overflow-y: auto; backdrop-filter: blur(10px); }}
         .sidebar.open {{ left: 0; }}
+        
         .background-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }}
         .background-option {{ width: 100%; height: 100px; background-size: cover; background-position: center; border-radius: 5px; cursor: pointer; transition: 0.3s; border: 3px solid transparent; }}
         .background-option:hover {{ transform: scale(1.02); box-shadow: 0 0 15px rgba(255,255,255,0.4); }}
+        
         .material-icons {{ color: white; font-size: 24px; }}
         
         /* Widget Grid */
-        .widget-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; max-width: 600px; margin-top: 20px; }}
+        .widget-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%; max-width: 600px; margin-top: 20px; }}
         .mini-card {{ background: rgba(51,51,51,0.7); backdrop-filter: blur(5px); padding: 15px; border-radius: 12px; text-align: center; color: white; text-decoration: none; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; }}
         .mini-card:hover {{ background: rgba(0,0,0,0.5); transform: translateY(-3px); }}
+        
         .btn-gold {{ background: #ffc107; color: #000; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-weight: bold; }}
     </style>
     <script>
@@ -188,6 +197,7 @@ class InternalPages:
         <h1>New Tab</h1>
         <input type="text" class="search-box" placeholder="Search or enter URL" onkeypress="handleSearch(event)">
         
+        <!-- Restored Feature Grid -->
         <div class="widget-grid">
             <a href="navi://pw" class="mini-card"><span class="material-icons">language</span><br>Sites</a>
             <a href="navi://cws" class="mini-card"><span class="material-icons">extension</span><br>Exts</a>
@@ -197,14 +207,6 @@ class InternalPages:
             <a href="navi://settings" class="mini-card"><span class="material-icons">settings</span><br>Settings</a>
         </div>
     </div>
-    <small class="credit">Original HTML by cursorhex on github</small>
-
-<style>
-.credit {
-  font-size: 0.6rem;
-  opacity: 0.6;
-}
-</style>
 </body>
 </html>
 """
@@ -264,7 +266,7 @@ class BrowserTab(QWebEngineView):
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
-        self.setPage(NaviWebPage(self))
+        self.setPage(NaviWebPage(self)) # Pass View to Page
         self.page().loadFinished.connect(self.loaded)
 
     def chk_yt(self):
@@ -287,11 +289,16 @@ class BrowserTab(QWebEngineView):
     def createWindow(self, _type): return self.main.add_tab()
 
 class NaviWebPage(QWebEnginePage):
+    def __init__(self, view): # Fix: Accept view in init
+        super().__init__(view)
+        self.browser_view = view # Store it safely
+
     def certificateError(self, error): return True
+    
     def acceptNavigationRequest(self, url, _type, isMainFrame):
         if url.scheme() in ["navi", "app"]:
-            view = self.view()
-            if view and hasattr(view, 'main'): view.main.handle_cmd(url.toString(), view)
+            if self.browser_view and hasattr(self.browser_view, 'main'): 
+                self.browser_view.main.handle_cmd(url.toString(), self.browser_view)
             return False
         return super().acceptNavigationRequest(url, _type, isMainFrame)
 
@@ -452,6 +459,7 @@ class NaviBrowser(QMainWindow):
                     self.data.update(d)
                     if 'theme' not in self.data['settings']: self.data['settings']['theme']='dark'
                     if 'mode' not in self.data['settings']: self.data['settings']['mode']='modern'
+                    if 'bg_url' not in self.data['settings']: self.data['settings']['bg_url']=''
             except: pass
     def apply_theme(self):
         self.setStyleSheet(BrowserStyles.get(self.data['settings']['theme'], self.data['settings'].get('mode', 'modern')))
