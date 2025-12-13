@@ -41,7 +41,6 @@ def get_search_url(engine, query):
 class BrowserStyles:
     @staticmethod
     def get(theme, engine_mode):
-        # Fallback if theme doesn't exist in dict
         c = {
             "light": {"bg": "#f8f9fa", "fg": "#212529", "tab": "#ffffff", "sel": "#e9ecef", "bar": "#ffffff", "acc": "#0d6efd", "border": "#dee2e6"},
             "dark": {"bg": "#212529", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"},
@@ -50,9 +49,8 @@ class BrowserStyles:
             "cyberpunk": {"bg": "#0b0d17", "fg": "#00f3ff", "tab": "#121526", "sel": "#1c1f3a", "bar": "#121526", "acc": "#ff0099", "border": "#00f3ff"},
             "sunset": {"bg": "#2d1b2e", "fg": "#ffcc00", "tab": "#442244", "sel": "#b3446c", "bar": "#442244", "acc": "#f6511d", "border": "#b3446c"},
             "matrix": {"bg": "#000000", "fg": "#00ff00", "tab": "#0a0a0a", "sel": "#111", "bar": "#0a0a0a", "acc": "#008f11", "border": "#003300"},
-        }.get(theme)
-        
-        if not c: c = {"bg": "#212529", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"}
+        }.get(theme, {})
+        if not c: c = {"bg": "#222222", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"}
 
         radius = "12px" if engine_mode == "modern" else "0px"
         padding = "8px 20px" if engine_mode == "modern" else "4px 10px"
@@ -79,7 +77,6 @@ class BrowserStyles:
 class InternalPages:
     @staticmethod
     def css(theme):
-        # Generic CSS for internal pages (Settings, History, etc) - escaped for Python f-strings
         is_dark = theme != "light"
         bg = "#2b3035" if is_dark else "#f8f9fa"
         card_bg = "#343a40" if is_dark else "#ffffff"
@@ -109,10 +106,8 @@ class InternalPages:
         else:
             bg_style = f"background-color: {s.get('bg_url', '#222222')};"
 
-        # Insert Navits Balance
         navit_display = f'<span class="btn btn-gold" style="position: absolute; top: 20px; right: 20px;">🪙 {navits}</span>'
 
-        # Note: We use double braces {{ }} for CSS blocks to avoid f-string errors
         return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -266,7 +261,7 @@ class BrowserTab(QWebEngineView):
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
-        self.setPage(NaviWebPage(self)) # Pass View to Page
+        self.setPage(NaviWebPage(self)) 
         self.page().loadFinished.connect(self.loaded)
 
     def chk_yt(self):
@@ -288,17 +283,18 @@ class BrowserTab(QWebEngineView):
 
     def createWindow(self, _type): return self.main.add_tab()
 
+# --- Custom Web Page with View Fix ---
 class NaviWebPage(QWebEnginePage):
-    def __init__(self, view): # Fix: Accept view in init
+    def __init__(self, view):
         super().__init__(view)
-        self.browser_view = view # Store it safely
+        self.view_ref = view # Explicitly store view reference to prevent AttributeError
 
     def certificateError(self, error): return True
     
     def acceptNavigationRequest(self, url, _type, isMainFrame):
         if url.scheme() in ["navi", "app"]:
-            if self.browser_view and hasattr(self.browser_view, 'main'): 
-                self.browser_view.main.handle_cmd(url.toString(), self.browser_view)
+            if self.view_ref and hasattr(self.view_ref, 'main'):
+                self.view_ref.main.handle_cmd(url.toString(), self.view_ref)
             return False
         return super().acceptNavigationRequest(url, _type, isMainFrame)
 
@@ -308,6 +304,7 @@ class NaviBrowser(QMainWindow):
         super().__init__()
         self.setWindowTitle("Navi Browser Ultimate v7")
         self.resize(1300, 900)
+        # Default Data Structure
         self.data = {
             'sites': {}, 'extensions': {}, 'history': [], 'downloads': [],
             'settings': {'theme': 'dark', 'engine': 'Google', 'suffix': '.pw-navi', 'wholesome': True, 'mode': 'modern', 'bg_url': ''},
@@ -456,10 +453,14 @@ class NaviBrowser(QMainWindow):
             try:
                 with open(DATA_FILE, 'r') as f: 
                     d = json.load(f)
-                    self.data.update(d)
-                    if 'theme' not in self.data['settings']: self.data['settings']['theme']='dark'
-                    if 'mode' not in self.data['settings']: self.data['settings']['mode']='modern'
-                    if 'bg_url' not in self.data['settings']: self.data['settings']['bg_url']=''
+                    # Safe Merge
+                    if 'settings' in d: self.data['settings'].update(d['settings'])
+                    for k in d: 
+                        if k!='settings' and k in self.data: self.data[k]=d[k]
+                    # Ensure defaults
+                    defaults = {'theme': 'dark', 'engine': 'Google', 'suffix': '.pw-navi', 'wholesome': True, 'mode': 'modern', 'bg_url': ''}
+                    for k,v in defaults.items(): 
+                        if k not in self.data['settings']: self.data['settings'][k]=v
             except: pass
     def apply_theme(self):
         self.setStyleSheet(BrowserStyles.get(self.data['settings']['theme'], self.data['settings'].get('mode', 'modern')))
@@ -471,4 +472,5 @@ if __name__ == '__main__':
     window = NaviBrowser()
     window.show()
     sys.exit(app.exec())
+
 
