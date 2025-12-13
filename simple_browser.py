@@ -44,11 +44,10 @@ def get_search_url(engine, query):
     }
     return engines.get(engine, engines["Google"]) + query.replace(" ", "+")
 
-# --- UI Styling Logic ---
+# --- UI Styling ---
 class BrowserStyles:
     @staticmethod
     def get(theme, engine_mode):
-        # Colors
         c = {
             "light": {"bg": "#f8f9fa", "fg": "#212529", "tab": "#ffffff", "sel": "#e9ecef", "bar": "#ffffff", "acc": "#0d6efd", "border": "#dee2e6"},
             "dark": {"bg": "#212529", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"},
@@ -58,182 +57,217 @@ class BrowserStyles:
             "sunset": {"bg": "#2d1b2e", "fg": "#ffcc00", "tab": "#442244", "sel": "#b3446c", "bar": "#442244", "acc": "#f6511d", "border": "#b3446c"},
             "matrix": {"bg": "#000000", "fg": "#00ff00", "tab": "#0a0a0a", "sel": "#111", "bar": "#0a0a0a", "acc": "#008f11", "border": "#003300"},
         }.get(theme, {})
+        if not c: c = {"bg": "#222222", "fg": "#f8f9fa", "tab": "#2c3034", "sel": "#343a40", "bar": "#343a40", "acc": "#0d6efd", "border": "#495057"}
 
-        if not c: c = {"bg": "#f8f9fa", "fg": "#212529", "tab": "#fff", "sel": "#e9ecef", "bar": "#fff", "acc": "#0d6efd", "border": "#dee2e6"}
-
-        # Engine Mode (Legacy vs Modern)
         radius = "12px" if engine_mode == "modern" else "0px"
         padding = "8px 20px" if engine_mode == "modern" else "4px 10px"
         margin = "4px" if engine_mode == "modern" else "0px"
         bar_border = "0px" if engine_mode == "modern" else f"1px solid {c['border']}"
+        font = "'Poppins', sans-serif" if engine_mode == "modern" else "'Segoe UI', sans-serif"
 
         return f"""
         QMainWindow {{ background-color: {c['bg']}; color: {c['fg']}; }}
-        QWidget {{ color: {c['fg']}; }}
+        QWidget {{ color: {c['fg']}; font-family: {font}; }}
         QTabWidget::pane {{ border: 0; background: {c['bg']}; }}
-        QTabBar::tab {{
-            background: {c['tab']}; color: {c['fg']}; padding: {padding};
-            border-top-left-radius: {radius}; border-top-right-radius: {radius};
-            margin-right: {margin}; font-family: 'Segoe UI'; font-size: 13px;
-        }}
+        QTabBar::tab {{ background: {c['tab']}; color: {c['fg']}; padding: {padding}; border-top-left-radius: {radius}; border-top-right-radius: {radius}; margin-right: {margin}; font-size: 13px; }}
         QTabBar::tab:selected {{ background: {c['sel']}; font-weight: bold; border-bottom: 3px solid {c['acc']}; }}
         QToolBar {{ background: {c['bar']}; border-bottom: 1px solid {c['border']}; spacing: 8px; padding: 6px; }}
-        QLineEdit {{
-            background: {c['bg']}; border: 1px solid {c['border']}; border-radius: {radius};
-            padding: 8px 15px; color: {c['fg']}; font-size: 14px;
-        }}
+        QLineEdit {{ background: {c['bg']}; border: 1px solid {c['border']}; border-radius: {radius}; padding: 8px 15px; color: {c['fg']}; font-size: 14px; }}
         QLineEdit:focus {{ border: 1px solid {c['acc']}; }}
-        QPushButton {{
-            background-color: transparent; border-radius: 6px; padding: 6px;
-            color: {c['fg']}; font-weight: bold; font-size: 16px; border: {bar_border};
-        }}
+        QPushButton {{ background-color: transparent; border-radius: 6px; padding: 6px; color: {c['fg']}; font-weight: bold; font-size: 16px; border: {bar_border}; }}
         QPushButton:hover {{ background-color: {c['tab']}; }}
         QMenu {{ background: {c['bar']}; color: {c['fg']}; border: 1px solid {c['border']}; }}
         QMenu::item:selected {{ background: {c['acc']}; color: #fff; }}
         """
 
-# --- Internal Pages (HTML/CSS) ---
+# --- Internal Pages Generator ---
 class InternalPages:
     @staticmethod
-    def css(theme, bg_url):
-        # Glassmorphism Logic
+    def css(theme):
+        # Generic CSS for internal pages (Settings, History, etc)
         is_dark = theme != "light"
-        glass_bg = "rgba(0, 0, 0, 0.6)" if is_dark else "rgba(255, 255, 255, 0.8)"
+        bg = "#2b3035" if is_dark else "#f8f9fa"
+        card_bg = "#343a40" if is_dark else "#ffffff"
         text = "#f8f9fa" if is_dark else "#212529"
-        border = "rgba(255,255,255,0.1)" if is_dark else "rgba(0,0,0,0.1)"
-        
-        # Background handling
-        body_bg = f"background-color: {bg_url};" if bg_url.startswith("#") else f"background-image: url('{bg_url}'); background-size: cover; background-position: center;"
-        if not bg_url: body_bg = f"background-color: {'#212529' if is_dark else '#f8f9fa'};"
-
+        border = "#495057" if is_dark else "#dee2e6"
         return f"""
-        body {{ font-family: 'Segoe UI', sans-serif; {body_bg} color: {text}; margin: 0; min-height: 100vh; backdrop-filter: blur(5px); }}
-        .container {{ max-width: 900px; margin: 0 auto; padding: 40px 20px; }}
-        .card {{ 
-            background: {glass_bg}; backdrop-filter: blur(10px); 
-            padding: 25px; border-radius: 16px; margin-bottom: 20px; 
-            border: 1px solid {border}; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        }}
-        h1, h2, h3 {{ color: {text}; margin-top: 0; }}
-        .btn {{ 
-            padding: 10px 20px; background: #0d6efd; color: white; border: none; border-radius: 8px; 
-            text-decoration: none; cursor: pointer; display: inline-block; font-weight: 500; transition: 0.2s;
-        }}
-        .btn:hover {{ transform: translateY(-2px); box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4); }}
-        .btn-gold {{ background: #ffc107; color: #000; }}
+        body {{ font-family: 'Poppins', sans-serif; background: {bg}; color: {text}; padding: 40px; margin: 0; }}
+        .container {{ max-width: 900px; margin: 0 auto; }}
+        h1 {{ color: #0d6efd; }}
+        .card {{ background: {card_bg}; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid {border}; }}
+        .btn {{ padding: 8px 16px; background: #0d6efd; color: white; border: none; border-radius: 6px; text-decoration: none; cursor: pointer; display: inline-block; margin-right: 5px; }}
+        .btn:hover {{ background: #0b5ed7; }}
         .btn-danger {{ background: #dc3545; }}
-        input, select, textarea {{ 
-            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid {border}; 
-            background: rgba(255,255,255,0.1); color: {text}; margin-top: 5px; box-sizing: border-box;
-        }}
-        input:focus {{ outline: 2px solid #0d6efd; background: rgba(255,255,255,0.2); }}
-        
-        /* New Tab Specific */
-        .nt-center {{ display: flex; flex-direction: column; align-items: center; justify-content: center; height: 85vh; }}
-        .search-box {{ 
-            width: 100%; max-width: 650px; padding: 18px 30px; border-radius: 50px; 
-            font-size: 18px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            background: {glass_bg}; color: {text}; outline: none; transition: 0.3s;
-        }}
-        .search-box:focus {{ transform: scale(1.02); box-shadow: 0 15px 40px rgba(0,0,0,0.3); }}
-        .widget-row {{ display: flex; gap: 15px; margin-top: 30px; flex-wrap: wrap; justify-content: center; }}
-        .mini-card {{ background: {glass_bg}; padding: 15px; border-radius: 12px; text-align: center; min-width: 100px; cursor: pointer; transition: 0.2s; }}
-        .mini-card:hover {{ background: rgba(255,255,255,0.2); }}
-        .clock {{ font-size: 4em; font-weight: 200; margin-bottom: 20px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }}
+        .btn-gold {{ background: #ffc107; color: #000; }}
+        .widget-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }}
+        input, select {{ padding: 10px; border-radius: 6px; border: 1px solid {border}; background: {bg}; color: {text}; width: 100%; box-sizing: border-box; }}
         """
 
     @staticmethod
     def new_tab(data):
         s = data['settings']
-        widgets = data['inventory']
+        navits = data['navits']
         
-        # Zen Mode Check
-        if s.get('zen_mode', False):
-            return f"""<html><head><title>New Tab</title><style>{InternalPages.css(s['theme'], s.get('bg_url', ''))}</style>
-            <script>
-            function search(e){{ if(e.key==='Enter') window.location='navi://search/'+encodeURIComponent(e.target.value); }}
-            </script></head><body>
-            <div style="position:absolute; top:20px; right:20px;">
-                <a href="navi://toggle/zen" class="btn" style="background:transparent; border:1px solid white;">Exit Zen</a>
-            </div>
-            <div class="nt-center">
-                <input class="search-box" placeholder="Search..." onkeypress="search(event)" autofocus>
-            </div></body></html>"""
+        # User requested background
+        bg_style = f"background-image: url('{s.get('bg_url', '')}');" if s.get('bg_url') and not s['bg_url'].startswith('#') else f"background-color: {s.get('bg_url', '#222222')};"
+        if not s.get('bg_url'): bg_style = "background-color: #222222;"
 
-        # Normal Mode
-        extras = ""
-        if "widgets" in widgets:
-            extras = """
-            <div class="card" style="width: 300px;">
-                <b>🧮 Calc</b> <input onchange="this.value=eval(this.value)" placeholder="2*2">
-            </div>"""
+        # Insert Navits Balance
+        navit_display = f'<span class="btn btn-gold" style="position: absolute; top: 20px; right: 20px;">🪙 {navits}</span>'
 
-        return f"""<html><head><title>New Tab</title><style>{InternalPages.css(s['theme'], s.get('bg_url', ''))}</style>
-        <script>
-            function search(e){{ if(e.key==='Enter') window.location='navi://search/'+encodeURIComponent(e.target.value); }}
-            setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {{hour: '2-digit', minute:'2-digit'}}), 1000);
-            function saveNote(v) {{ window.location='navi://save_notes/'+encodeURIComponent(v); }}
-        </script></head><body>
-        <div style="position:absolute; top:20px; right:20px; display:flex; gap:10px;">
-            <a href="navi://customize" class="btn" style="background:rgba(0,0,0,0.5)">🎨 Customize</a>
-            <a href="navi://toggle/zen" class="btn" style="background:rgba(0,0,0,0.5)">🧘 Zen</a>
-            <span class="btn btn-gold">🪙 {data['navits']}</span>
+        return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Tab</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+        body {{ {bg_style} background-size: cover; background-position: center; color: #FFFFFF; font-family: "Poppins", serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; transition: background-image 0.5s ease; }}
+        .container {{ text-align: center; position: relative; max-width: 900px; width: 95%; display: flex; flex-direction: column; align-items: center; }}
+        h1 {{ font-size: 3em; margin-bottom: 20px; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 10px rgba(0, 0, 0, 0.7); }}
+        .search-box {{ padding: 12px; font-size: 1.3em; font-family: "Poppins", serif; width: 500px; max-width: 80vw; border-radius: 15px; border: none; background-color: rgba(51, 51, 51, 0.7); color: #FFFFFF; margin-bottom: 20px; backdrop-filter: blur(5px); transition: box-shadow 0.3s ease; }}
+        .search-box:focus {{ outline: none; box-shadow: 0 0 20px #000000d7; }}
+        .settings, .sidebar-toggle, .sidebar {{ z-index: 1000; }}
+        .settings {{ position: fixed; top: 20px; left: 60px; display: flex; gap: 10px; align-items: center; }}
+        .settings input {{ padding: 8px; background-color: rgba(51, 51, 51, 0.8); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; }}
+        .settings button {{ padding: 8px 12px; border: none; border-radius: 8px; background-color: #0d6efd; color: white; cursor: pointer; font-family: "Poppins", serif; }}
+        .sidebar-toggle {{ position: fixed; left: 10px; top: 10px; cursor: pointer; padding: 10px; background-color: #333333b0; border-radius: 50%; backdrop-filter: blur(5px); }}
+        .sidebar {{ position: fixed; left: -300px; top: 0; width: 300px; height: 100vh; background-color: #33333381; transition: left 0.5s ease; padding: 20px; box-sizing: border-box; overflow-y: auto; backdrop-filter: blur(10px); }}
+        .sidebar.open {{ left: 0; }}
+        .background-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }}
+        .background-option {{ width: 100%; height: 100px; background-size: cover; background-position: center; border-radius: 5px; cursor: pointer; transition: 0.3s; border: 3px solid transparent; }}
+        .background-option:hover {{ transform: scale(1.02); box-shadow: 0 0 15px rgba(255,255,255,0.4); }}
+        .material-icons {{ color: white; font-size: 24px; }}
+        
+        /* Widget Grid */
+        .widget-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; max-width: 600px; margin-top: 20px; }}
+        .mini-card {{ background: rgba(51,51,51,0.7); backdrop-filter: blur(5px); padding: 15px; border-radius: 12px; text-align: center; color: white; text-decoration: none; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; }}
+        .mini-card:hover {{ background: rgba(0,0,0,0.5); transform: translateY(-3px); }}
+        .btn-gold {{ background: #ffc107; color: #000; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-weight: bold; }}
+    </style>
+    <script>
+        const backgrounds = [
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR5hNaF09ykqTB3f7Vh0bjIdZwnjP8zgLK3ltDyjk91Fw&s=10',
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRX-_RMHWqoAs6PkpHB9N0Lbar1hOTmJLDaK1ExfZiVJA&s=10',
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7aaASVlsLNoAIyXAlkAy3CInHuYaejCIRrYcwo8ZWSQ&s=10',
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyigMXGvP60gWjZ8W5W4sMfcYTe303m5u3pViEeVjjuw&s=10'
+        ];
+        
+        function handleSearch(e) {{
+            if (e.key === 'Enter') window.location.href = 'app://navigate?url=' + encodeURIComponent(e.target.value);
+        }}
+        function setBg(url) {{ window.location.href = 'navi://set/bg/' + encodeURIComponent(url); }}
+        function toggleSidebar() {{ document.querySelector('.sidebar').classList.toggle('open'); }}
+        
+        document.addEventListener('DOMContentLoaded', () => {{
+            const grid = document.querySelector('.background-grid');
+            backgrounds.forEach(bg => {{
+                const div = document.createElement('div'); div.className = 'background-option';
+                div.style.backgroundImage = `url('${{bg}}')`;
+                div.onclick = () => setBg(bg);
+                grid.appendChild(div);
+            }});
+            document.querySelector('.search-box').focus();
+        }});
+    </script>
+</head>
+<body>
+    {navit_display}
+    <div class="sidebar-toggle" onclick="toggleSidebar()"><span class="material-icons">wallpaper</span></div>
+    <div class="sidebar">
+        <h2 style="color: white; text-align: center;">Backgrounds</h2>
+        <div class="background-grid"></div>
+    </div>
+    <div class="settings">
+        <input type="text" id="bgUrl" placeholder="Background URL">
+        <button onclick="setBg(document.getElementById('bgUrl').value)">Set</button>
+    </div>
+    <div class="container">
+        <h1>New Tab</h1>
+        <input type="text" class="search-box" placeholder="Search or enter URL" onkeypress="handleSearch(event)">
+        
+        <div class="widget-grid">
+            <a href="navi://pw" class="mini-card"><span class="material-icons">language</span><br>Sites</a>
+            <a href="navi://cws" class="mini-card"><span class="material-icons">extension</span><br>Exts</a>
+            <a href="navi://history" class="mini-card"><span class="material-icons">history</span><br>History</a>
+            <a href="navi://dlw" class="mini-card"><span class="material-icons">download</span><br>Saved</a>
+            <a href="navi://store" class="mini-card"><span class="material-icons">store</span><br>Store</a>
+            <a href="navi://settings" class="mini-card"><span class="material-icons">settings</span><br>Settings</a>
         </div>
+    </div>
+    <small class="credit">Original HTML by cursorhex on github</small>
+
+<style>
+.credit {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+</style>
+</body>
+</html>
+"""
+
+# --- Editors ---
+class CodeEditor(QWidget):
+    def __init__(self, main, mode="site", key=None):
+        super().__init__()
+        self.main, self.mode, self.key = main, mode, key
+        self.resize(900, 700); self.setWindowTitle("Navi Editor")
+        l = QVBoxLayout()
+        self.name = QLineEdit(); self.name.setPlaceholderText("Name"); l.addWidget(QLabel("Name")); l.addWidget(self.name)
+        if key: 
+            clean_key = key.replace(main.data['settings']['suffix'], "") if mode=="site" else key
+            self.name.setText(clean_key); self.name.setReadOnly(True)
         
-        <div class="nt-center">
-            <div id="clock" class="clock">00:00</div>
-            <input class="search-box" placeholder="Search {s['engine']} or type a URL..." onkeypress="search(event)" autofocus>
-            
-            <div class="widget-row">
-                <a href="navi://pw" class="mini-card" style="text-decoration:none; color:inherit">🌐<br>Sites</a>
-                <a href="navi://cws" class="mini-card" style="text-decoration:none; color:inherit">🧩<br>Exts</a>
-                <a href="navi://dlw" class="mini-card" style="text-decoration:none; color:inherit">⬇️<br>Saved</a>
-                <a href="navi://history" class="mini-card" style="text-decoration:none; color:inherit">🕒<br>History</a>
-                <a href="navi://settings" class="mini-card" style="text-decoration:none; color:inherit">⚙️<br>Settings</a>
-            </div>
+        if mode=="site": 
+            self.ti = QLineEdit(); self.ti.setPlaceholderText("Title"); l.addWidget(QLabel("Title")); l.addWidget(self.ti)
+        
+        self.code = QTextEdit(); self.code.setPlaceholderText("HTML Code" if mode=="site" else "JavaScript Code"); l.addWidget(QLabel("Code")); l.addWidget(self.code)
+        
+        btn = QPushButton("Save"); btn.setStyleSheet("background:#198754;color:white;padding:10px;"); btn.clicked.connect(self.save); l.addWidget(btn)
+        self.setLayout(l)
+        
+        if key:
+            d = main.data['sites' if mode=="site" else 'extensions'].get(key)
+            if d:
+                self.code.setText(d['html_content'] if mode=="site" else d['code'])
+                if mode=="site": self.ti.setText(d['title'])
 
-            <div style="display:flex; gap:20px; margin-top:30px; align-items:start;">
-                <div class="card" style="width: 300px; text-align:left;">
-                    <b>📝 Notes</b>
-                    <textarea style="height:100px; background:transparent; border:none;" oninput="saveNote(this.value)">{s['home_notes']}</textarea>
-                </div>
-                {extras}
-            </div>
-        </div></body></html>"""
+    def save(self):
+        n = self.name.text().strip()
+        c = self.code.toPlainText()
+        if not n: return
+        
+        if self.mode == "site":
+            s = self.main.data['settings']['suffix']
+            f = f"{n.lower()}{s}" if not n.endswith(s) else n.lower()
+            self.main.data['sites'][f] = {'domain': f, 'title': self.ti.text(), 'html_content': c}
+            self.main.add_tab(QUrl(f"local://{f}/"))
+        else:
+            self.main.data['extensions'][n] = {'code': c, 'active': True}
+        
+        self.main.save_data(); self.close()
 
-# --- Custom Web Engine ---
-class NaviWebPage(QWebEnginePage):
-    def certificateError(self, error): return True
-    def acceptNavigationRequest(self, url, _type, isMainFrame):
-        if url.scheme() == "navi":
-            view = self.view()
-            if view and hasattr(view, 'main'):
-                view.main.handle_cmd(url.toString(), view)
-            return False
-        return super().acceptNavigationRequest(url, _type, isMainFrame)
+class SourceViewer(QDialog):
+    def __init__(self, t, p=None):
+        super().__init__(p); self.resize(800,600); e=QPlainTextEdit(t); e.setReadOnly(True); l=QVBoxLayout(); l.addWidget(e); self.setLayout(l)
 
 # --- Browser Tab ---
 class BrowserTab(QWebEngineView):
     def __init__(self, main):
         super().__init__()
         self.main = main
-        self.yt_timer = QTimer(self); self.yt_timer.timeout.connect(self.check_yt); self.yt_timer.start(60000)
-        self.yt_m = 0; self.last_yt = ""
-        
+        self.yt_t = QTimer(self); self.yt_t.timeout.connect(self.chk_yt); self.yt_t.start(60000)
+        self.yt_m = 0
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
         self.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
-        
         self.setPage(NaviWebPage(self))
         self.page().loadFinished.connect(self.loaded)
-        self.urlChanged.connect(self.url_chg)
 
-    def url_chg(self, u):
-        s = u.toString()
-        if "youtube.com/watch" not in s: self.yt_m = 0
-        elif s != self.last_yt: self.yt_m = 0; self.last_yt = s
-
-    def check_yt(self):
+    def chk_yt(self):
         if "youtube.com/watch" in self.url().toString():
             self.yt_m += 1
             if self.yt_m == 15: self.main.add_navits(1, "YouTube"); self.yt_m = 0
@@ -244,27 +278,36 @@ class BrowserTab(QWebEngineView):
             if e['active']: self.page().runJavaScript(e['code'])
         
         u = self.url().toString()
-        if "google.com" in u or "duckduckgo" in u: self.main.search_reward(1)
-        elif "ecosia" in u: self.main.search_reward(2)
+        if "google.com" in u or "duckduckgo" in u: self.main.sch_rwd(1)
+        elif "ecosia" in u: self.main.sch_rwd(2)
         
-        if not u.startswith("local://") and not u.startswith("navi://"):
+        if not u.startswith("local://") and not u.startswith("navi://") and not u.startswith("app://"):
             self.main.add_hist(u, self.title())
 
     def createWindow(self, _type): return self.main.add_tab()
+
+class NaviWebPage(QWebEnginePage):
+    def certificateError(self, error): return True
+    def acceptNavigationRequest(self, url, _type, isMainFrame):
+        if url.scheme() in ["navi", "app"]:
+            view = self.view()
+            if view and hasattr(view, 'main'): view.main.handle_cmd(url.toString(), view)
+            return False
+        return super().acceptNavigationRequest(url, _type, isMainFrame)
 
 # --- Main Window ---
 class NaviBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Navi Browser Ultimate v6")
+        self.setWindowTitle("Navi Browser Ultimate v7")
         self.resize(1300, 900)
         self.data = {
             'sites': {}, 'extensions': {}, 'history': [], 'downloads': [],
-            'settings': {'theme': 'light', 'engine': 'Google', 'suffix': '.pw-navi', 'wholesome': True, 'mode': 'modern', 'bg_url': '', 'home_notes': ''},
+            'settings': {'theme': 'dark', 'engine': 'Google', 'suffix': '.pw-navi', 'wholesome': True, 'mode': 'modern', 'bg_url': ''},
             'navits': 0, 'inventory': [], 'last_active': time.time(), 'last_reward': 0
         }
         self.load_data()
-        self.check_dead_mans()
+        self.check_dead()
         self.setup_ui()
         self.apply_theme()
         self.add_tab(QUrl("local://navi/"))
@@ -274,11 +317,10 @@ class NaviBrowser(QMainWindow):
         for t, f in [("←", self.back), ("→", self.fwd), ("⟳", self.reload), ("🏠", self.home)]:
             b = QPushButton(t); b.setFixedSize(38,38); b.clicked.connect(f); tb.addWidget(b)
         
-        self.url = QLineEdit()
-        self.url.setPlaceholderText("Search or enter URL..."); self.url.returnPressed.connect(self.nav)
+        self.url = QLineEdit(); self.url.setPlaceholderText("Search..."); self.url.returnPressed.connect(self.nav)
         tb.addWidget(self.url)
         
-        for t, f in [("⬇️", self.dl_page), ("< >", self.src), ("+", self.add_tab_safe)]:
+        for t, f in [("⬇️", self.dl_pg), ("< >", self.src), ("+", self.add_tab_safe)]:
             b = QPushButton(t); b.setFixedSize(38,38); b.clicked.connect(f); tb.addWidget(b)
 
         self.tabs = QTabWidget(); self.tabs.setDocumentMode(True); self.tabs.setTabsClosable(True)
@@ -286,14 +328,13 @@ class NaviBrowser(QMainWindow):
         self.tabs.currentChanged.connect(self.upd_url)
         self.setCentralWidget(self.tabs)
 
-    # --- Logic ---
     def add_tab_safe(self): self.add_tab()
-    def add_tab(self, url=None, label="New Tab"):
-        if not url: url = QUrl("local://navi/")
-        b = BrowserTab(self); b.setUrl(url)
+    def add_tab(self, u=None, l="New Tab"):
+        if not u: u = QUrl("local://navi/")
+        b = BrowserTab(self); b.setUrl(u)
         b.urlChanged.connect(lambda q, b=b: self.upd_url_for(q, b))
-        b.titleChanged.connect(lambda t, b=b: self.upd_title(t, b))
-        i = self.tabs.addTab(b, label); self.tabs.setCurrentIndex(i); return b
+        b.titleChanged.connect(lambda t, b=b: self.upd_ti(t, b))
+        i = self.tabs.addTab(b, l); self.tabs.setCurrentIndex(i); return b
 
     def nav(self):
         t = self.url.text().strip(); b = self.tabs.currentWidget()
@@ -310,13 +351,13 @@ class NaviBrowser(QMainWindow):
     def upd_url_for(self, q, b):
         if b == self.tabs.currentWidget():
             u = q.toString()
-            if u.startswith("local://navi/"): self.url.setText(u.replace("local://navi/", "navi://").strip("/"))
+            if u.startswith("local://navi/") or u.startswith("app://"): self.url.setText("New Tab")
             elif not u.startswith("local://"): self.url.setText(u)
-        if q.scheme() == "navi": self.handle_cmd(q.toString(), b)
+        if q.scheme() in ["navi", "app"]: self.handle_cmd(q.toString(), b)
 
     def upd_url(self, i): 
         if i>=0: self.upd_url_for(self.tabs.widget(i).url(), self.tabs.widget(i))
-    def upd_title(self, t, b): 
+    def upd_ti(self, t, b): 
         i = self.tabs.indexOf(b); 
         if i!=-1: self.tabs.setTabText(i, t[:15])
 
@@ -325,118 +366,95 @@ class NaviBrowser(QMainWindow):
     def reload(self): self.tabs.currentWidget().reload() if self.tabs.currentWidget() else None
     def home(self): self.tabs.currentWidget().setUrl(QUrl("local://navi/"))
 
-    def search_reward(self, n):
-        if time.time() - self.data['last_reward'] > 60: self.add_navits(n); self.data['last_reward'] = time.time()
-    def add_navits(self, n, msg=""): self.data['navits']+=n; self.save_data(); print(f"+{n} {msg}")
+    def sch_rwd(self, n):
+        if time.time()-self.data['last_reward']>60: self.add_navits(n); self.data['last_reward']=time.time()
+    def add_navits(self, n, m=""): self.data['navits']+=n; self.save_data(); print(f"+{n} {m}")
     def add_hist(self, u, t):
         if not self.data['history'] or self.data['history'][0]['url']!=u:
             self.data['history'].insert(0, {'url':u, 'title':t, 'time':time.time()}); self.save_data()
-
-    def check_dead_mans(self):
+    def check_dead(self):
         if self.data['settings']['wholesome'] and time.time()-self.data['last_active']>TWO_WEEKS_SECONDS:
             self.data['history'] = get_wholesome_history()
         self.data['last_active'] = time.time(); self.save_data()
 
-    # --- Internal Page Handler ---
     def handle_cmd(self, u, b):
-        cmd = u.lower().replace("navi://", "").strip("/")
+        cmd = u.lower().replace("navi://", "").replace("app://", "").strip("/")
         st = self.data['settings']
         
-        if cmd=="" or cmd=="home": b.setHtml(InternalPages.new_tab(self.data), QUrl("local://navi/"))
-        elif cmd.startswith("search/"): b.setUrl(QUrl(get_search_url(st['engine'], QUrl.fromPercentEncoding(u.split("search/")[1].encode()))))
+        if cmd=="" or cmd=="home" or cmd=="newtab" or cmd.startswith("newtab"): 
+            b.setHtml(InternalPages.new_tab(self.data), QUrl("local://navi/"))
+        elif cmd.startswith("navigate"):
+            q = QUrl(u).queryItems(); tgt=""
+            for k,v in q: 
+                if k=="url": tgt=v
+            if tgt: b.setUrl(QUrl(tgt))
         
+        # --- Pages ---
         elif cmd=="settings":
             engines = "".join([f"<option {'selected' if e==st['engine'] else ''}>{e}</option>" for e in ["Google","Bing","Yahoo","DuckDuckGo","Ecosia","Yandex"]])
             themes = "".join([f"<a href='navi://set/theme/{t}' class='btn' style='margin:5px'>{t.title()}</a>" for t in ["light","dark","cyberpunk","sunset","matrix"] if t in ["light","dark"] or t in self.data['inventory']])
-            m_l = "checked" if st['mode']=="legacy" else ""; m_m = "checked" if st['mode']=="modern" else ""
+            m_l = "checked" if st.get('mode')=="legacy" else ""; m_m = "checked" if st.get('mode')=="modern" else ""
             
-            h = f"""<html><head><style>{InternalPages.css(st['theme'], st.get('bg_url',''))}</style></head><body><div class="container"><div class="card"><h1>Settings</h1>
+            h = f"""<html><head><style>{InternalPages.css(st['theme'])}</style></head><body><div class="container"><div class="card"><h1>Settings</h1>
             <h3>🎨 Visuals</h3>
-            <p><b>Engine Mode:</b> <label><input type="radio" name="m" {m_m} onclick="window.location='navi://set/mode/modern'"> Modern (PyQt6)</label> <label><input type="radio" name="m" {m_l} onclick="window.location='navi://set/mode/legacy'"> Legacy (PyQt5 Style)</label></p>
+            <p><b>Engine Mode:</b> <label><input type="radio" name="m" {m_m} onclick="window.location='navi://set/mode/modern'"> Modern</label> <label><input type="radio" name="m" {m_l} onclick="window.location='navi://set/mode/legacy'"> Legacy</label></p>
             <p>{themes}</p>
             <h3>🔍 Search</h3><select onchange="window.location='navi://set/engine/'+this.value">{engines}</select>
+            <h3>🔗 Suffix</h3><input value="{st['suffix']}" onchange="window.location='navi://set/suffix/'+this.value">
             </div></div></body></html>"""
             b.setHtml(h, QUrl("local://navi/settings"))
 
-        elif cmd=="customize":
-            bg = st.get('bg_url','')
-            h = f"""<html><head><style>{InternalPages.css(st['theme'], bg)}</style></head><body><div class="container"><div class="card"><h1>🎨 Customize New Tab</h1>
-            <p>Enter a Hex Color (e.g., #000000) or an Image URL.</p>
-            <input id="bg" value="{bg}" placeholder="https://image.jpg OR #123456">
-            <br><button class="btn" onclick="window.location='navi://set/bg/'+encodeURIComponent(document.getElementById('bg').value)">Save Background</button>
-            <button class="btn btn-danger" onclick="window.location='navi://set/bg/'">Reset</button>
-            </div></div></body></html>"""
-            b.setHtml(h, QUrl("local://navi/customize"))
+        elif cmd=="store":
+            inv = self.data['inventory']
+            def itm(i,n,c): return f"<div class='card'><h3>{n}</h3><a href='navi://buy/{i}' class='btn btn-gold'>Buy ({c})</a></div>" if i not in inv else ""
+            items = itm("cyberpunk","Cyberpunk",100) + itm("sunset","Sunset",100) + itm("matrix","Matrix",125) + itm("christmas","Christmas",150) + itm("halloween","Halloween",150)
+            b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'])}</style></head><body><div class='container'><h1>🛒 Store ({self.data['navits']} N)</h1><div class='widget-grid'>{items}</div></div></body></html>", QUrl("local://navi/store"))
 
         # Actions
-        elif cmd.startswith("save_notes/"): st['home_notes'] = QUrl.fromPercentEncoding(u.split("notes/")[1].encode()); self.save_data()
         elif cmd.startswith("set/theme/"): st['theme'] = u.split("theme/")[1]; self.apply_theme(); self.save_data(); self.handle_cmd("navi://settings", b)
         elif cmd.startswith("set/engine/"): st['engine'] = u.split("engine/")[1]; self.save_data()
         elif cmd.startswith("set/mode/"): st['mode'] = u.split("mode/")[1]; self.apply_theme(); self.save_data(); self.handle_cmd("navi://settings", b)
-        elif cmd.startswith("set/bg/"): 
-            p = u.split("bg/"); val = QUrl.fromPercentEncoding(p[1].encode()) if len(p)>1 else ""
-            st['bg_url'] = val; self.save_data(); self.handle_cmd("navi://home", b)
-        elif cmd=="toggle/zen": st['zen_mode'] = not st.get('zen_mode', False); self.save_data(); self.handle_cmd("navi://home", b)
-
-        # Stores/Navits
-        elif cmd=="navits": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'],st.get('bg_url',''))}</style></head><body><div class='container'><div class='card'><h1>🏆 Navits: {self.data['navits']}</h1><a href='navi://store' class='btn btn-gold'>Store</a></div></div></body></html>", QUrl("local://navi/navits"))
-        elif cmd=="store":
-            inv = self.data['inventory']
-            def itm(i,n,c,d): return f"<div class='card'><h3>{n}</h3><p>{d}</p><a href='navi://buy/{i}' class='btn btn-gold'>Buy ({c})</a></div>" if i not in inv else ""
-            items = itm("widgets","Pro Widgets",200,"Calc & Calendar") + itm("cyberpunk","Cyberpunk",100,"Neon Theme") + itm("sunset","Sunset",100,"Chill Theme") + itm("matrix","Matrix",125,"Hacker Theme")
-            b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'],st.get('bg_url',''))}</style></head><body><div class='container'><h1>🛒 Store</h1><p>Balance: {self.data['navits']}</p><div class='widget-grid'>{items}</div></div></body></html>", QUrl("local://navi/store"))
+        elif cmd.startswith("set/suffix/"): st['suffix'] = u.split("suffix/")[1]; self.save_data()
+        elif cmd.startswith("set/bg/"): st['bg_url'] = QUrl.fromPercentEncoding(u.split("bg/")[1].encode()); self.save_data(); self.handle_cmd("navi://home", b)
         elif cmd.startswith("buy/"):
-            i = u.split("buy/")[1]; c = {"widgets":200,"cyberpunk":100,"sunset":100,"matrix":125}.get(i,999)
+            i = u.split("buy/")[1]; c = {"cyberpunk":100,"sunset":100,"matrix":125,"christmas":150,"halloween":150}.get(i,999)
             if self.data['navits']>=c: self.data['navits']-=c; self.data['inventory'].append(i); self.save_data(); self.handle_cmd("navi://store",b)
-            else: QMessageBox.warning(self,"Poor","Not enough Navits!")
+            else: QMessageBox.warning(self,"Poor","Need more Navits!")
 
-        # Editors & Tools (Simplified routing)
-        elif cmd=="pw": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'],st.get('bg_url',''))}</style></head><body><div class='container'><h1>Sites</h1><a href='navi://pw/new' class='btn'>+ New</a><br><br>{''.join([f'<div class=card><b>{v["title"]}</b> ({k}) <a href="{k}" class=btn>Go</a></div>' for k,v in self.data['sites'].items()])}</div></body></html>", QUrl("local://pw"))
-        elif cmd=="pw/new": self.open_editor("site")
-        elif cmd=="cws": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'],st.get('bg_url',''))}</style></head><body><div class='container'><h1>Extensions</h1><a href='navi://cws/new' class='btn'>+ New</a><br><br>{''.join([f'<div class=card><h3>{k}</h3><a href=navi://cws/toggle/{k} class=btn>Toggle</a></div>' for k in self.data['extensions']])}</div></body></html>", QUrl("local://cws"))
-        elif cmd=="cws/new": self.open_editor("ext")
-        elif cmd.startswith("cws/toggle/"): 
-            n=u.split("toggle/")[1]; self.data['extensions'][n]['active'] = not self.data['extensions'][n]['active']; self.save_data(); self.handle_cmd("navi://cws",b)
-        elif cmd=="history": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'],st.get('bg_url',''))}</style></head><body><div class='container'><h1>History</h1>{''.join([f'<div class=card><a href={h["url"]}>{h["title"]}</a></div>' for h in self.data["history"]])}</div></body></html>", QUrl("local://hist"))
-        elif cmd=="dlw": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'],st.get('bg_url',''))}</style></head><body><div class='container'><h1>Downloads</h1>{''.join([f'<div class=card><h3>{d["title"]}</h3><a href=navi://dlw/view/{d["id"]} class=btn>View</a></div>' for d in self.data["downloads"]])}</div></body></html>", QUrl("local://dlw"))
+        # Lists & Tools
+        elif cmd=="pw": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'])}</style></head><body><div class='container'><h1>Sites</h1><a href='navi://pw/new' class='btn'>+ New</a><br><br><div class='widget-grid'>{''.join([f'<div class=card><b>{v["title"]}</b><br>{k}<br><a href="{k}" class=btn>Go</a> <a href="navi://pw/edit/{k}" class=btn>Edit</a> <a href="navi://pw/del/{k}" class="btn btn-danger">Del</a></div>' for k,v in self.data['sites'].items()])}</div></div></body></html>", QUrl("local://pw"))
+        elif cmd=="cws": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'])}</style></head><body><div class='container'><h1>Extensions</h1><a href='navi://cws/new' class='btn'>+ New</a><br><br><div class='widget-grid'>{''.join([f'<div class=card><h3>{k}</h3><a href=navi://cws/toggle/{k} class=btn>Toggle ({self.data["extensions"][k]["active"]})</a></div>' for k in self.data['extensions']])}</div></div></body></html>", QUrl("local://cws"))
+        elif cmd=="history": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'])}</style></head><body><div class='container'><h1>History</h1>{''.join([f'<div class=card><a href={h["url"]}>{h["title"]}</a></div>' for h in self.data["history"]])}</div></body></html>", QUrl("local://hist"))
+        elif cmd=="dlw": b.setHtml(f"<html><head><style>{InternalPages.css(st['theme'])}</style></head><body><div class='container'><h1>Downloads</h1>{''.join([f'<div class=card><h3>{d["title"]}</h3><a href=navi://dlw/view/{d["id"]} class=btn>View</a></div>' for d in self.data["downloads"]])}</div></body></html>", QUrl("local://dlw"))
+        
+        # Editors
+        elif cmd=="pw/new": CodeEditor(self, "site").show()
+        elif cmd.startswith("pw/edit/"): CodeEditor(self, "site", QUrl.fromPercentEncoding(u.split("edit/")[1].encode())).show()
+        elif cmd.startswith("pw/del/"): d = QUrl.fromPercentEncoding(u.split("del/")[1].encode()); del self.data['sites'][d]; self.save_data(); self.handle_cmd("navi://pw", b)
+        elif cmd=="cws/new": CodeEditor(self, "ext").show()
+        elif cmd.startswith("cws/toggle/"): n=u.split("toggle/")[1]; self.data['extensions'][n]['active'] = not self.data['extensions'][n]['active']; self.save_data(); self.handle_cmd("navi://cws",b)
         elif cmd.startswith("dlw/view/"): 
             did=u.split("view/")[1]; p=next((x for x in self.data['downloads'] if x['id']==did),None)
             if p: b.setHtml(p['html'], QUrl("local://offline"))
 
-    def dl_page(self): self.tabs.currentWidget().page().toHtml(lambda h: self.save_dl(self.tabs.currentWidget().title(), h))
+    def dl_pg(self): self.tabs.currentWidget().page().toHtml(lambda h: self.save_dl(self.tabs.currentWidget().title(), h))
     def save_dl(self, t, h): self.data['downloads'].append({'title':t,'html':h,'id':str(int(time.time()))}); self.save_data()
     def src(self): self.tabs.currentWidget().page().toHtml(lambda h: SourceViewer(h, self).exec())
-    
-    def open_editor(self, m, k=None):
-        d = QDialog(self); d.setWindowTitle("Editor"); d.resize(600,500); l=QVBoxLayout()
-        nm = QLineEdit(); nm.setPlaceholderText("Name"); l.addWidget(nm)
-        cd = QTextEdit(); cd.setPlaceholderText("Code/HTML"); l.addWidget(cd)
-        def sv():
-            if m=="site": self.data['sites'][nm.text()+self.data['settings']['suffix']]={'title':nm.text(),'html_content':cd.toPlainText(),'domain':nm.text()}
-            else: self.data['extensions'][nm.text()]={'code':cd.toPlainText(),'active':True}
-            self.save_data(); d.close()
-        btn=QPushButton("Save"); btn.clicked.connect(sv); l.addWidget(btn); d.setLayout(l); d.exec()
-
     def save_data(self):
         try: 
             with open(DATA_FILE, 'w') as f: json.dump(self.data, f)
         except: pass
-    
     def load_data(self):
         if os.path.exists(DATA_FILE):
             try:
                 with open(DATA_FILE, 'r') as f: 
                     d = json.load(f)
                     self.data.update(d)
-                    # Migrations
-                    s = self.data['settings']
-                    if 'theme' not in s: s['theme']='light'
-                    if 'mode' not in s: s['mode']='modern'
-                    if 'bg_url' not in s: s['bg_url']=''
+                    if 'theme' not in self.data['settings']: self.data['settings']['theme']='dark'
+                    if 'mode' not in self.data['settings']: self.data['settings']['mode']='modern'
             except: pass
-
     def apply_theme(self):
-        self.setStyleSheet(BrowserStyles.get(self.data['settings']['theme'], self.data['settings']['mode']))
+        self.setStyleSheet(BrowserStyles.get(self.data['settings']['theme'], self.data['settings'].get('mode', 'modern')))
         if self.tabs.currentWidget(): self.tabs.currentWidget().reload()
 
 if __name__ == '__main__':
