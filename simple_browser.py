@@ -202,6 +202,14 @@ class InternalPages:
             <a href="navi://settings" class="mini-card"><span class="material-icons">settings</span><br>Settings</a>
         </div>
     </div>
+    <small class="credit">Original HTML by cursorhex on github</small>
+
+<style>
+.credit {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+</style>
 </body>
 </html>
 """
