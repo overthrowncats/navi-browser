@@ -10,10 +10,10 @@ After downloading, just run the `OmxrBrowser.exe` file.
 [join our discord server for more information](https://discord.gg/2ps9Fq6fpH)
 
 ## 🛠️ How to Build
-### before i tell you how to download it, make sure you have Git and python installed in your computer
+### before i tell you how to download it, make sure you have Git and python installed in your computer, 2nd thing, i changed my username, so if it doesnt work then change "omxrprob" to "overthrowncats"
 first do this in the terminal(microsoft shell tab):
 ```bash
-git clone https://github.com/omxrprob/navi-browser.git
+git clone https://github.com/overthrowncats/navi-browser.git
 ```
 then hit enter, then do this:
 ```bash
