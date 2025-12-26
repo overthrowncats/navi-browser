@@ -156,7 +156,11 @@ class InternalPages:
             'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR5hNaF09ykqTB3f7Vh0bjIdZwnjP8zgLK3ltDyjk91Fw&s=10',
             'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRX-_RMHWqoAs6PkpHB9N0Lbar1hOTmJLDaK1ExfZiVJA&s=10',
             'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7aaASVlsLNoAIyXAlkAy3CInHuYaejCIRrYcwo8ZWSQ&s=10',
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyigMXGvP60gWjZ8W5W4sMfcYTe303m5u3pViEeVjjuw&s=10'
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyigMXGvP60gWjZ8W5W4sMfcYTe303m5u3pViEeVjjuw&s=10',
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHb8KtmhdnOBZey7jZ_SJxIN0xheUbuuy28QjCB4kXfQ&s=10',
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAakSD_9_vTzNUvHm0_FACBw_Bk3-oJoA1ySd2pPOOfw&s=10',
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHcTxQ_JwawDivZOCGADoK2E7biH6YwoZ4vlhn7cSTTw&s=10',
+            'https://plus.unsplash.com/premium_photo-1733306435632-9860ace48cb9?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8b3V0ZXIlMjBoZWJyaWRlc3xlbnwwfHwwfHx8MA%3D%3D'
         ];
         
         function handleSearch(e) {{
